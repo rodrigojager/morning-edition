@@ -57,7 +57,9 @@ fun LibraryScreen(store: Store?, onOpenEdition: (String) -> Unit = {}) {
         page == NEW -> MagazineForm(store, null, go)
         page.startsWith("form:") -> MagazineForm(store, page.removePrefix("form:"), go)
         page.startsWith("src:") -> SourceForm(store, page.removePrefix("src:"), go)
-        page.startsWith("fmt:") -> FormatPlaceholder(page.removePrefix("fmt:"), go)
+        page.startsWith("fmt:") -> page.removePrefix("fmt:").let { id ->
+            dobra.app.format.FormatScreen(store, id, onBack = { go("mag:$id") }, onOpenEdition = onOpenEdition)
+        }
         else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition)
     }
 }
@@ -328,16 +330,6 @@ private fun EditionCard(
                 onNo = onNo,
             )
         }
-    }
-}
-
-// ---- the format link: a placeholder route ----
-
-@Composable
-private fun FormatPlaceholder(id: String, go: (String) -> Unit) {
-    LibraryPage("screen-format") {
-        Btn(stringResource(R.string.magazine_back), "back") { go("mag:$id") }
-        Body(stringResource(R.string.format_placeholder))
     }
 }
 

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="format_kicker">Formato</string>
+    <string name="format_title">Formato</string>
+    <string name="format_intro">Cada item da revista é uma lista de blocos: título, parágrafo, citação, código, imagem e assim por diante. Aqui você escolhe quais blocos a revista aceita e como cada um aparece. A escolha vira um contrato, o schema, e todo item é conferido contra ele.</string>
+    <string name="format_missing">Esta revista não está na biblioteca.</string>
+    <string name="format_back">← %1$s</string>
+
+    <string name="format_blocks_title">Blocos</string>
+    <string name="format_blocks_count">%1$d de %2$d aceitos</string>
+    <string name="format_required">obrigatório</string>
+    <string name="format_accepted">Aceito</string>
+    <string name="format_refused">Recusado</string>
+    <string name="format_uses_none">não aparece nesta edição</string>
+    <string name="format_uses_one">aparece 1 vez nesta edição</string>
+    <string name="format_uses_many">aparece %1$d vezes nesta edição</string>
+    <string name="format_look_open">Aparência</string>
+    <string name="format_reset">Voltar ao formato padrão</string>
+    <string name="format_see_edition">Ver na edição</string>
+
+    <string name="format_check_title">Conferência</string>
+    <string name="format_check_none_title">Nada para conferir</string>
+    <string name="format_check_none_body">Esta revista não tem edição. O formato fica guardado para quando houver.</string>
+    <string name="format_check_summary">%1$d de %2$d itens dentro do formato</string>
+    <string name="format_check_all_fine">Todos os blocos são de tipos aceitos e têm os campos obrigatórios.</string>
+    <string name="format_check_off">%1$s traz %2$s, que o formato não aceita.</string>
+    <string name="format_check_faults">%1$s: %2$s.</string>
+    <string name="format_check_note">Aqui não há IA: os blocos recusados só deixam de aparecer na edição. Quando o trabalho de reescrita existir, ele refará esses itens sem os blocos recusados e o resultado será conferido de novo.</string>
+
+    <string name="format_schema_title">Schema</string>
+    <string name="format_schema_note">O contrato do conteúdo, gerado a partir das escolhas acima no padrão JSON Schema.</string>
+    <string name="format_schema_show">Ver o schema</string>
+    <string name="format_schema_hide">Esconder o schema</string>
+    <string name="format_looks_title">Aparência como dados</string>
+    <string name="format_looks_note">Como cada tipo de bloco é desenhado. Mudar isto não muda o conteúdo nem o schema.</string>
+    <string name="format_looks_show">Ver a aparência como dados</string>
+    <string name="format_looks_hide">Esconder a aparência como dados</string>
+    <string name="format_looks_empty">Nenhuma aparência definida.</string>
+
+    <string name="look_font">Fonte</string>
+    <string name="look_size">Tamanho</string>
+    <string name="look_color">Cor</string>
+    <string name="look_align">Alinhamento</string>
+    <string name="look_default">padrão</string>
+    <string name="look_font_display">Fraunces (títulos)</string>
+    <string name="look_font_text">Newsreader (texto)</string>
+    <string name="look_font_mono">JetBrains Mono</string>
+    <string name="look_size_smaller">menor</string>
+    <string name="look_size_larger">maior</string>
+    <string name="look_size_largest">bem maior</string>
+    <string name="look_color_ink">tinta</string>
+    <string name="look_color_ink2">tinta suave</string>
+    <string name="look_color_accent">destaque</string>
+    <string name="look_align_left">à esquerda</string>
+    <string name="look_align_center">ao centro</string>
+    <string name="look_align_right">à direita</string>
+    <string name="look_align_justify">justificado</string>
+
+    <string name="format_fault_missing_field">bloco %1$d (%2$s): falta o campo “%3$s”</string>
+    <string name="format_fault_wrong_field">bloco %1$d (%2$s): o campo “%3$s” deveria ser do tipo %4$s</string>
+    <string name="format_fault_missing_block">falta o bloco obrigatório “%1$s”</string>
+    <string name="format_fault_no_type">bloco %1$d: o tipo “%2$s” não existe</string>
+
+    <string name="format_block_illustration">Ilustração</string>
+    <string name="format_block_title">Título</string>
+    <string name="format_block_summary">Resumo</string>
+    <string name="format_block_section">Título de seção</string>
+    <string name="format_block_paragraph">Parágrafo</string>
+    <string name="format_block_callout">Destaque</string>
+    <string name="format_block_glossary">Glossário</string>
+    <string name="format_block_list">Lista</string>
+    <string name="format_block_image">Imagem</string>
+    <string name="format_block_video">Vídeo</string>
+    <string name="format_block_code">Bloco de código</string>
+    <string name="format_block_facts">Fatos verificados</string>
+    <string name="format_block_hypothesis">Hipótese</string>
+    <string name="format_block_factsheet">Ficha</string>
+    <string name="format_block_quote">Citação</string>
+    <string name="format_block_evidence">Evidência com data</string>
+    <string name="format_block_sources">Fontes</string>
+    <string name="format_block_note">Nota</string>
+    <string name="format_block_why">Por que está na edição</string>
+
+    <string name="format_what_illustration">a estampa que abre o item</string>
+    <string name="format_what_title">o chapéu e o título do item</string>
+    <string name="format_what_summary">o que é e para que serve, em uma ou duas frases</string>
+    <string name="format_what_section">divide o item em partes</string>
+    <string name="format_what_paragraph">texto corrido</string>
+    <string name="format_what_callout">uma frase posta em evidência, como uma analogia</string>
+    <string name="format_what_glossary">termos e o que cada um significa</string>
+    <string name="format_what_list">itens numerados ou com marcador</string>
+    <string name="format_what_image">imagem da fonte, com legenda e crédito</string>
+    <string name="format_what_video">vídeo da fonte, com título e crédito</string>
+    <string name="format_what_code">comandos ou trechos de código</string>
+    <string name="format_what_facts">o que foi conferido na fonte</string>
+    <string name="format_what_hypothesis">aplicação imaginada para você, separada dos fatos</string>
+    <string name="format_what_factsheet">dados em pares, como licença, custo e onde roda</string>
+    <string name="format_what_quote">a fala de alguém, com autor e link</string>
+    <string name="format_what_evidence">acontecimentos recentes, cada um com a data</string>
+    <string name="format_what_sources">os links de onde o item veio</string>
+    <string name="format_what_note">observação curta, como o que não pôde ser verificado</string>
+    <string name="format_what_why">a explicação da escolha e a pontuação</string>
+</resources>
