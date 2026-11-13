@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="work_channel">Edições</string>
+    <string name="work_channel_about">Avisa enquanto uma edição está sendo gerada e quando ela fica pronta.</string>
+    <string name="work_progress_title">Gerando edição · %1$s</string>
+    <string name="work_progress_start">Começando…</string>
+    <string name="work_progress_collecting">Coletando… %1$d de %2$d fontes</string>
+    <string name="work_progress_choosing">A IA está escolhendo o que entra</string>
+    <string name="work_progress_writing">Escrevendo… %1$d de %2$d matérias</string>
+    <string name="work_progress_saving">Guardando a edição</string>
+    <string name="work_ready_title">Edição pronta</string>
+    <string name="work_ready_text">%1$s · edição nº %2$d</string>
+
+    <string name="generation_title">Geração de edições</string>
+    <string name="generation_about">Cada revista ganha uma edição sozinha, no horário da sua cadência, mesmo com o app fechado. O sistema pode atrasar a geração para poupar bateria.</string>
+    <string name="generation_conditions">Condições</string>
+    <string name="generation_wifi">Só no Wi-Fi</string>
+    <string name="generation_charging">Só carregando</string>
+    <string name="generation_magazines">Por revista</string>
+    <string name="generation_next">Próxima edição: %1$s</string>
+    <string name="generation_last_none">Última: nenhuma gerada sozinha ainda</string>
+    <string name="generation_last_made">Última: %1$s · edição pronta</string>
+    <string name="generation_last_nothing">Última: %1$s · nada novo para publicar</string>
+    <string name="generation_last_missing">Última: %1$s · falta configurar a IA</string>
+    <string name="generation_last_failed">Última: %1$s · falhou (%2$s)</string>
+    <string name="generation_notify_hint">Para avisar quando uma edição fica pronta, o app pede permissão de notificação uma vez.</string>
+    <string name="generation_back">Voltar</string>
+</resources>

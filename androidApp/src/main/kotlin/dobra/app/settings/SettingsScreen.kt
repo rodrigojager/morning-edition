@@ -34,6 +34,9 @@ import dobra.app.ai.AiSetup
 import dobra.app.shell.AppFonts
 import dobra.app.shell.LocalReaderColors
 import dobra.app.shell.PlaceholderScreen
+import dobra.app.work.Generation
+import dobra.app.work.GenerationScreen
+import dobra.model.Magazine
 import dobra.model.Topic
 import dobra.store.Controls
 import dobra.store.DeviceSettings
@@ -60,6 +63,8 @@ fun SettingsScreen(
     ai: AiSetup? = null,
     topics: List<Topic> = emptyList(),
     onTopics: ((List<Topic>) -> Unit)? = null,
+    generation: Generation? = null,
+    magazines: List<Magazine> = emptyList(),
 ) {
     val colors = LocalReaderColors.current
     var sub by rememberSaveable { mutableStateOf(Sub.NONE) }
@@ -75,7 +80,11 @@ fun SettingsScreen(
         }
         Sub.GENERATION -> {
             BackHandler { sub = Sub.NONE }
-            PlaceholderScreen(stringResource(R.string.generation_placeholder), "screen-generation")
+            if (generation != null) {
+                GenerationScreen(generation, magazines, onBack = { sub = Sub.NONE })
+            } else {
+                PlaceholderScreen(stringResource(R.string.generation_placeholder), "screen-generation")
+            }
             return
         }
         Sub.NONE -> Unit

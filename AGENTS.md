@@ -57,6 +57,26 @@ Collectors (one TypeScript script per source) run in `shared/.../dobra/collect/e
   cannot load the Android native library. A Robolectric test in `androidApp` that runs a collector needs the same
   substitution in `androidApp/build.gradle.kts`.
 
+## Editions on schedule
+
+- **Library: WorkManager** (`androidx.work`, pinned in `gradle/libs.versions.toml`), the platform's library for
+  deferrable background work that must run with the app closed and survive reboots. Code in `androidApp/.../work`.
+- **One unique periodic job per magazine** (`Generation.sync`, unique name `edition-<magazine id>`): every 1 day
+  (daily) or 7 days (weekly), first run at the cadence's hour. A job is kept while its cadence and conditions are the
+  same and replaced (`CANCEL_AND_REENQUEUE`) when either changes; deleting a magazine cancels its job.
+  `AppContainer.startSchedules` follows the store's magazines.
+- **Conditions**: the reader's two options become the job's constraints: "Só no Wi-Fi" = unmetered network (else any
+  connected network), "Só carregando" = requires charging. The system may delay the job (Doze, battery saving); that
+  is accepted and nothing tries to defeat it.
+- **Long-running job**: making an edition means many fetches and AI calls and may pass WorkManager's 10-minute limit
+  for a plain job, so `EditionWorker` runs as a long-running job (`setForegroundAsync`, foreground service type
+  `dataSync`, declared in the manifest) with a progress notification. When Android does not allow starting a
+  foreground service from the background, the job continues as a plain job.
+- **Same making as "Gerar edição agora"**: the job calls `MakeRunner.run`, the same path the button uses.
+- **Notifications**: progress while it runs; "Edição pronta" when an edition was stored, opening it in the reader
+  (`EditionNotices.EXTRA_OPEN_EDITION` read by `MainActivity`). The permission to notify (Android 13+) is asked once,
+  the first time the reader opens "Geração de edições"; without it, editions are still made silently.
+
 ## Conventions
 - Kotlin, official code style (`kotlin.code.style=official`), 4-space indentation, 120-column lines.
 - Code, identifiers, comments, commit messages and documents are English. Text the reader sees is Brazilian

@@ -62,6 +62,8 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     // The device's fold, where the book's spine goes.
     implementation(libs.androidx.window)
+    // Editions made in the background on each magazine's cadence.
+    implementation(libs.androidx.work.runtime.ktx)
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
 
@@ -71,6 +73,7 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation(libs.compose.ui.test.junit4)
     testImplementation(libs.androidx.window.testing)
+    testImplementation(libs.androidx.work.testing)
 
     robolectricAndroidAll(libs.robolectric.android.all.sdk35)
 

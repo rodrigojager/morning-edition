@@ -32,6 +32,8 @@ androidx-window = "1.5.1"
 # QuickJS for Kotlin Multiplatform (github.com/dokar3/quickjs-kt): the collector engine. 1.0.16+ is built with
 # Kotlin 2.4.21. Android host tests use the -jvm artifact (desktop natives) instead of the -android one.
 quickjs-kt = "1.0.18"
+# WorkManager: editions made in the background on each magazine's cadence. 2.12.0 declares minCompileSdk 35.
+androidx-work = "2.12.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
@@ -56,6 +58,8 @@ androidx-window = { module = "androidx.window:window", version.ref = "androidx-w
 androidx-window-testing = { module = "androidx.window:window-testing", version.ref = "androidx-window" }
 quickjs-kt = { module = "io.github.dokar3:quickjs-kt", version.ref = "quickjs-kt" }
 quickjs-kt-jvm = { module = "io.github.dokar3:quickjs-kt-jvm", version.ref = "quickjs-kt" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidx-work" }
 robolectric-android-all-sdk35 = { module = "org.robolectric:android-all-instrumented", version.ref = "robolectric-android-all-sdk35" }
 
 [plugins]

@@ -64,19 +64,43 @@ class MakeRunner(
 
     /** Collects, then filters and rewrites, then stores the edition. Does nothing while a run of [magazine] is on. */
     fun make(magazine: Magazine) {
+        if (!begin(magazine)) return
+        scope.launch { execute(magazine) {} }
+    }
+
+    /**
+     * The same run as [make], awaited: the background job of a magazine's cadence calls this, so an edition made on
+     * schedule is made exactly as one asked for with "Gerar edição agora". Returns [RunState.Idle] when a run of the
+     * magazine is already on.
+     */
+    suspend fun run(magazine: Magazine, onProgress: (MakeProgress) -> Unit = {}): RunState<MakeResult> {
+        if (makes.value[magazine.id] is RunState.Running) return RunState.Idle
+        if (!begin(magazine)) return makes.value[magazine.id] ?: RunState.Idle
+        return execute(magazine, onProgress)
+    }
+
+    /** Says what is missing, or marks the run as started; false when nothing may run. */
+    private fun begin(magazine: Magazine): Boolean {
         val id = magazine.id
-        if (makes.value[id] is RunState.Running) return
-        RewriteSetup.missing(ai.registry)?.let { missing -> makes.update { it + (id to RunState.Missing(missing)) }; return }
+        if (makes.value[id] is RunState.Running) return false
+        RewriteSetup.missing(ai.registry)?.let { missing -> makes.update { it + (id to RunState.Missing(missing)) }; return false }
         val first = MakeProgress(MakeStage.COLLECTING, 0, magazine.sources.size, magazine.sources.firstOrNull()?.name)
         makes.update { it + (id to RunState.Running(first)) }
-        scope.launch {
-            val next: RunState<MakeResult> = guarded {
-                val s = store()
-                val maker = EditionMaker(ai.gateway, ai.ledger, s.editions, s.marks, pages, today)
-                RunState.Done(EditionPipeline(collector, maker).run(magazine) { p -> makes.update { it + (id to RunState.Running(p)) } })
-            }
-            makes.update { it + (id to next) }
+        return true
+    }
+
+    private suspend fun execute(magazine: Magazine, onProgress: (MakeProgress) -> Unit): RunState<MakeResult> {
+        val id = magazine.id
+        val next: RunState<MakeResult> = guarded {
+            val s = store()
+            val maker = EditionMaker(ai.gateway, ai.ledger, s.editions, s.marks, pages, today)
+            RunState.Done(EditionPipeline(collector, maker).run(magazine) { p ->
+                makes.update { it + (id to RunState.Running(p)) }
+                onProgress(p)
+            })
         }
+        makes.update { it + (id to next) }
+        return next
     }
 
     /** Asks the AI to rewrite the items of [editionKey] that are outside the current format of [magazine]. */

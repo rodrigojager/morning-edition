@@ -11,6 +11,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import java.io.File
 
 /**
@@ -78,8 +79,32 @@ class AppContainer(private val context: Context) {
         dobra.app.library.MakeRunner(scope, { store.await() }, ai, collector, pages = dobra.app.library.HttpPageReader())
     }
 
+    /** The background editions: one periodic job per magazine on its cadence, the reader's conditions, the last runs. */
+    val generation: dobra.app.work.Generation by lazy {
+        dobra.app.work.Generation(context, { androidx.work.WorkManager.getInstance(context) })
+    }
+
+    /** Keeps the scheduled jobs in step with the magazines (added, deleted, cadence or hour changed). Called once. */
+    fun startSchedules() {
+        if (schedulesStarted) return
+        schedulesStarted = true
+        scope.launch { store.await().magazines.observeAll().collect { generation.sync(it) } }
+    }
+
+    @Volatile
+    private var schedulesStarted = false
+
     private fun readSeed(): SeedContent {
         fun asset(name: String) = context.assets.open(name).bufferedReader().use { it.readText() }
         return SeedContent(Seed.magazine(asset(Seed.MAGAZINE_FILE)), Seed.edition(asset(Seed.EDITION_FILE)))
+    }
+
+    companion object {
+        @Volatile
+        private var instance: AppContainer? = null
+
+        /** The process's one container, shared by the activity and the background jobs (one store, one AI setup). */
+        fun of(context: Context): AppContainer =
+            instance ?: synchronized(this) { instance ?: AppContainer(context.applicationContext).also { instance = it } }
     }
 }

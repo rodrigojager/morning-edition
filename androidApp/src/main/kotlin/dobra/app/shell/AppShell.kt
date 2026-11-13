@@ -75,6 +75,8 @@ fun AppShell(
     collector: dobra.collect.worker.MagazineCollector? = null,
     maker: dobra.app.library.MakeRunner? = null,
     desk: dobra.app.library.CollectorDesk? = null,
+    generation: dobra.app.work.Generation? = null,
+    magazines: List<dobra.model.Magazine> = emptyList(),
 ) {
     AppTheme(settings.theme, settings.textSize.toFloat()) {
         val colors = LocalReaderColors.current
@@ -121,6 +123,8 @@ fun AppShell(
                             settings, onSettings, ai,
                             topics = data?.magazine?.topics.orEmpty(),
                             onTopics = data?.let { d -> { topics -> scope.launch { store?.magazines?.save(d.magazine.copy(topics = topics)) } } },
+                            generation = generation,
+                            magazines = magazines,
                         )
                     }
                 }

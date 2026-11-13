@@ -1,6 +1,7 @@
 package dobra.app.shell
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -28,7 +29,7 @@ object Routes {
 
 /** Connects the local store to the shell: opens the store, then follows magazine, edition and settings. */
 @Composable
-fun AppNav(container: AppContainer) {
+fun AppNav(container: AppContainer, open: String? = null, onOpened: () -> Unit = {}) {
     val store by produceState<Store?>(null, container) { value = container.store.await() }
     val s = store
     if (s == null) {
@@ -39,6 +40,13 @@ fun AppNav(container: AppContainer) {
     val settings by s.settings.observe().collectAsState(initial = null)
     val magazines by s.magazines.observeAll().collectAsState(initial = null)
     var openKey by rememberSaveable { mutableStateOf<String?>(null) }
+    // An edition asked for from outside (the "Edição pronta" notification) is opened once.
+    LaunchedEffect(open) {
+        if (open != null) {
+            openKey = open
+            onOpened()
+        }
+    }
     val magazine = magazines?.let { list -> list.firstOrNull { it.id == openKey?.substringBefore('/') } ?: list.firstOrNull() }
     val current = settings
     if (current == null) {
@@ -55,6 +63,8 @@ fun AppNav(container: AppContainer) {
         collector = container.collector,
         maker = container.maker,
         desk = container.desk,
+        generation = container.generation,
+        magazines = magazines.orEmpty(),
     )
 }
 
