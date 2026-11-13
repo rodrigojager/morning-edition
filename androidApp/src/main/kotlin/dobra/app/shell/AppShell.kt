@@ -15,7 +15,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
@@ -92,13 +96,15 @@ fun AppShell(
                                 tab = Routes.EDITION
                             },
                         )
-                        Routes.SAVED -> SavedScreen()
+                        Routes.SAVED -> SavedScreen(store)
                         Routes.SOURCES -> SourcesScreen()
                         Routes.SETTINGS -> SettingsScreen(settings, onSettings)
                     }
                 }
             }
-            TabBar(selected = tab, onSelect = { tab = it })
+            val savedCount by remember(store) { store?.marks?.observeSaved()?.map { it.size } ?: flowOf(0) }
+                .collectAsState(initial = 0)
+            TabBar(selected = tab, onSelect = { tab = it }, savedCount = savedCount)
         }
     }
 }
@@ -115,7 +121,7 @@ private fun tabLabel(route: String): String = stringResource(
 )
 
 @Composable
-private fun TabBar(selected: String, onSelect: (String) -> Unit) {
+private fun TabBar(selected: String, onSelect: (String) -> Unit, savedCount: Int = 0) {
     val colors = LocalReaderColors.current
     Row(
         Modifier
@@ -139,14 +145,27 @@ private fun TabBar(selected: String, onSelect: (String) -> Unit) {
                     .padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = tabLabel(route),
-                    color = if (on) colors.accent else colors.ink3,
-                    fontFamily = AppFonts.mono,
-                    fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text(
+                        text = tabLabel(route),
+                        color = if (on) colors.accent else colors.ink3,
+                        fontFamily = AppFonts.mono,
+                        fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal,
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                    )
+                    if (route == Routes.SAVED && savedCount > 0) {
+                        Text(
+                            text = savedCount.toString(),
+                            color = colors.accent,
+                            fontFamily = AppFonts.mono,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            modifier = Modifier.testTag("tab-count-saved"),
+                        )
+                    }
+                }
             }
         }
     }
