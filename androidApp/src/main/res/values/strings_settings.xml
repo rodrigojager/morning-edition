@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_title">Ajustes</string>
+    <string name="settings_theme">TEMA</string>
+    <string name="theme_paper">Papel</string>
+    <string name="theme_sepia">Sépia</string>
+    <string name="theme_night">Noite</string>
+</resources>

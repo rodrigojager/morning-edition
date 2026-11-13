@@ -2,4 +2,10 @@
 <!-- Strings of the app shell. Reader-facing text is Brazilian Portuguese. -->
 <resources>
     <string name="app_name" translatable="false">Primeira Dobra</string>
+    <string name="tab_edition">Edição</string>
+    <string name="tab_library">Biblioteca</string>
+    <string name="tab_saved">Salvos</string>
+    <string name="tab_sources">Fontes</string>
+    <string name="tab_settings">Ajustes</string>
+    <string name="loading">Abrindo a edição…</string>
 </resources>

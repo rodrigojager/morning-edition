@@ -1,0 +1,5 @@
+Bundled typefaces (SIL Open Font License 1.1, https://openfontlicense.org):
+- Fraunces, copyright The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)
+- Newsreader, copyright The Newsreader Project Authors (https://github.com/productiontype/Newsreader)
+- JetBrains Mono, copyright The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+Font files were taken from the Google Fonts repository (https://github.com/google/fonts) and are shipped unmodified.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="edition_number_date">Edição nº %1$d · %2$s</string>
+    <string name="cover_first_story">Na capa</string>
+    <string name="cover_start">Começar a ler</string>
+    <string name="toc_title">Nesta edição</string>
+    <string name="toc_read_min">%1$d min</string>
+    <string name="notes_title">Notas rápidas</string>
+    <string name="backstage_title">Bastidores</string>
+    <string name="backstage_collection">O que foi consultado</string>
+    <string name="backstage_left_out">O que ficou de fora</string>
+    <string name="collection_records">%1$d registros</string>
+    <string name="state_answered">respondeu</string>
+    <string name="state_partial">parcial</string>
+    <string name="state_failed">falhou</string>
+    <string name="story_read_min">%1$d min de leitura</string>
+    <string name="end_mark">Fim da edição</string>
+    <string name="end_back_to_library">Voltar à biblioteca</string>
+    <string name="end_previous_edition">Edição anterior</string>
+    <string name="sources_heading">Fontes</string>
+</resources>
