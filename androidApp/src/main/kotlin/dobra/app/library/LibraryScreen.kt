@@ -32,7 +32,6 @@ import dobra.model.Blocks
 import dobra.model.CadenceKind
 import dobra.model.Magazine
 import dobra.model.Source
-import dobra.model.SourceHealth
 import dobra.store.EditionSummary
 import dobra.store.Store
 import kotlinx.coroutines.launch
@@ -49,6 +48,7 @@ fun LibraryScreen(
     store: Store?,
     collector: dobra.collect.worker.MagazineCollector? = null,
     maker: MakeRunner? = null,
+    desk: CollectorDesk? = null,
     onOpenEdition: (String) -> Unit = {},
 ) {
     if (store == null) {
@@ -61,11 +61,11 @@ fun LibraryScreen(
         page == LIST -> LibraryList(store, go)
         page == NEW -> MagazineForm(store, null, go)
         page.startsWith("form:") -> MagazineForm(store, page.removePrefix("form:"), go)
-        page.startsWith("src:") -> SourceForm(store, page.removePrefix("src:"), go)
+        page.startsWith("src:") -> SourceForm(store, page.removePrefix("src:"), go, desk)
         page.startsWith("fmt:") -> page.removePrefix("fmt:").let { id ->
             dobra.app.format.FormatScreen(store, id, onBack = { go("mag:$id") }, onOpenEdition = onOpenEdition, maker = maker)
         }
-        else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition, collector, maker)
+        else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition, collector, maker, desk)
     }
 }
 
@@ -137,6 +137,7 @@ private fun MagazinePage(
     onOpenEdition: (String) -> Unit,
     collector: dobra.collect.worker.MagazineCollector?,
     maker: MakeRunner?,
+    desk: CollectorDesk?,
 ) {
     val magazines by remember(store) { store.magazines.observeAll() }.collectAsState(initial = null)
     val list = magazines
@@ -193,12 +194,12 @@ private fun MagazinePage(
 
         SectionTitle(stringResource(R.string.sources_title))
         Meta(stringResource(R.string.recipe_version, m.version), "recipe-version")
-        Body(stringResource(R.string.sources_hint))
+        Body(stringResource(R.string.collector_sources_hint))
         if (m.sources.isEmpty()) {
             Empty(stringResource(R.string.sources_none_title), stringResource(R.string.sources_none_body), "sources-empty")
         }
         m.sources.forEach { s ->
-            SourceRow(s) {
+            SourceRow(m, s, desk) {
                 scope.launch { store.magazines.save(m.copy(sources = m.sources.filter { it.id != s.id })) }
             }
         }
@@ -282,7 +283,7 @@ private fun Recipe(m: Magazine, onFormat: () -> Unit) {
 }
 
 @Composable
-private fun SourceRow(s: Source, onRemove: () -> Unit) {
+private fun SourceRow(m: Magazine, s: Source, desk: CollectorDesk?, onRemove: () -> Unit) {
     Card("source-${s.id}") {
         Text(s.name, color = LocalReaderColors.current.ink, fontFamily = AppFonts.text, fontSize = 17.sp)
         Meta(s.url)
@@ -290,20 +291,10 @@ private fun SourceRow(s: Source, onRemove: () -> Unit) {
             if (s.liked.isBlank()) stringResource(R.string.source_looking_for_none)
             else stringResource(R.string.source_looking_for, s.liked),
         )
-        Meta(sourceState(s), "source-state-${s.id}")
+        SourceCollectorPart(m, s, desk)
         BtnRow { Btn(stringResource(R.string.source_remove), "remove-source-${s.id}", onClick = onRemove) }
     }
 }
-
-@Composable
-private fun sourceState(s: Source): String = stringResource(
-    when {
-        s.collector == null -> R.string.source_state_none
-        s.health == SourceHealth.WORKING -> R.string.source_state_working
-        s.health == SourceHealth.REPAIRING -> R.string.source_state_repairing
-        else -> R.string.source_state_unavailable
-    },
-)
 
 @Composable
 private fun EditionCard(
@@ -424,9 +415,12 @@ private fun FlowChoices(content: @Composable () -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
 }
 
-/** Adds a source record to a magazine: an address and what to look for. Nothing is collected. */
+/**
+ * Adds a source to a magazine: an address and what the reader liked there. With a [desk], the app then copies the page
+ * and asks the AI for the source's collector at once.
+ */
 @Composable
-private fun SourceForm(store: Store, id: String, go: (String) -> Unit) {
+private fun SourceForm(store: Store, id: String, go: (String) -> Unit, desk: CollectorDesk?) {
     var name by rememberSaveable { mutableStateOf("") }
     var url by rememberSaveable { mutableStateOf("") }
     var liked by rememberSaveable { mutableStateOf("") }
@@ -445,7 +439,9 @@ private fun SourceForm(store: Store, id: String, go: (String) -> Unit) {
                 } else {
                     scope.launch {
                         val m = store.magazines.get(id) ?: return@launch
-                        store.magazines.save(m.copy(sources = m.sources + newSource(m, name, url, liked)))
+                        val added = newSource(m, name, url, liked)
+                        store.magazines.save(m.copy(sources = m.sources + added))
+                        desk?.write(id, added.id)
                     }
                     go("mag:$id")
                 }

@@ -74,6 +74,7 @@ fun AppShell(
     ai: dobra.app.ai.AiSetup? = null,
     collector: dobra.collect.worker.MagazineCollector? = null,
     maker: dobra.app.library.MakeRunner? = null,
+    desk: dobra.app.library.CollectorDesk? = null,
 ) {
     AppTheme(settings.theme, settings.textSize.toFloat()) {
         val colors = LocalReaderColors.current
@@ -112,6 +113,7 @@ fun AppShell(
                             },
                             collector = collector,
                             maker = maker,
+                            desk = desk,
                         )
                         Routes.SAVED -> SavedScreen(store)
                         Routes.SOURCES -> SourcesScreen(data?.magazine, data?.edition)

@@ -55,6 +55,12 @@ data class SourceResult(
     val reason: String? = null,
     val refusedStatus: Int? = null,
     val cursor: String? = null,
+    /** Records the script returned that failed the record shape (missing or malformed fields). */
+    val malformed: Int = 0,
+    /** True when every fetch of the run failed in the transport itself (no network): the site said nothing. */
+    val unreachable: Boolean = false,
+    /** False when the source was not run at all (no collector yet, or unavailable). */
+    val ran: Boolean = true,
 ) {
     fun toLine(): CollectionLine = CollectionLine(sourceName, kept, state, reason)
 }
@@ -115,7 +121,7 @@ class CollectionWorker(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return skipped(source, "the collector could not run: ${e.message ?: e::class.simpleName}")
+            return skipped(source, "the collector could not run: ${e.message ?: e::class.simpleName}").copy(ran = true)
         }
         val refusal = run.fetches.firstOrNull { it.status == 403 || it.status == 429 }?.status
         val (fresh, old) = run.kept.partition { it.link !in already }
@@ -135,6 +141,8 @@ class CollectionWorker(
             reason = reasonOf(run, refusal),
             refusedStatus = refusal,
             cursor = run.cursor,
+            malformed = run.refused.size,
+            unreachable = run.fetches.isNotEmpty() && run.fetches.all { it.status == 0 && it.note?.startsWith("refused") != true },
         )
     }
 
@@ -160,5 +168,6 @@ class CollectionWorker(
         fresh = emptyList(),
         candidates = emptyList(),
         reason = reason,
+        ran = false,
     )
 }

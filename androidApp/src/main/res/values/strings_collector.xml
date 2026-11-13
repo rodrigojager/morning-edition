@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings of the collectors on the magazine page: their state, and the AI writing and repairing them. Reader-facing text is Brazilian Portuguese. -->
+<resources>
+    <string name="collector_sources_hint">Cada fonte é um endereço e o que você gostou nele. Ao adicionar, o app guarda uma cópia da página e a IA escreve um coletor: um pequeno programa que lê a fonte sem usar IA. Ele só é aceito depois de dar o mesmo resultado duas vezes sobre essa cópia.</string>
+
+    <string name="collector_state_none">sem coletor</string>
+    <string name="collector_state_working">funcionando</string>
+    <string name="collector_state_repairing">em reparo</string>
+    <string name="collector_state_unavailable">indisponível</string>
+    <string name="collector_state_not_ready">coletor não está pronto</string>
+    <string name="collector_state_writing">a IA está escrevendo o coletor…</string>
+    <string name="collector_state_adapting">em reparo: a IA está adaptando o coletor…</string>
+    <string name="collector_reason">Motivo: %1$s</string>
+
+    <string name="collector_write">Pedir à IA que escreva o coletor</string>
+    <string name="collector_write_again">Pedir à IA de novo</string>
+    <string name="collector_repair">Pedir à IA que adapte o coletor</string>
+    <string name="collector_ready">Coletor aceito: deu o mesmo resultado duas vezes sobre a cópia da página.</string>
+
+    <string name="collector_suggest_title">PALAVRAS-CHAVE SUGERIDAS</string>
+    <string name="collector_suggest_body">A IA sugere estas palavras pelo que a fonte publica. Toque nas que quiser; só as escolhidas entram na receita.</string>
+    <string name="collector_suggest_keep">Adicionar as escolhidas</string>
+    <string name="collector_suggest_skip">Agora não</string>
+
+    <string name="collector_missing_provider">Para escrever um coletor falta um provedor de IA. Adicione um em Ajustes › Provedores de IA e escolha quem faz o trabalho “Escrever coletores”.</string>
+    <string name="collector_missing_choice">Falta escolher qual provedor faz o trabalho “Escrever coletores”. Escolha em Ajustes › Provedores de IA.</string>
+    <string name="collector_missing_model">Falta escolher o modelo do trabalho “Escrever coletores” em Ajustes › Provedores de IA.</string>
+    <string name="collector_missing_key">A chave do provedor escolhido para “Escrever coletores” não está neste aparelho. Adicione o provedor de novo em Ajustes › Provedores de IA.</string>
+
+    <string name="collector_fail_key">O provedor recusou a chave. Confira-a em Ajustes › Provedores de IA.</string>
+    <string name="collector_fail_rate">O provedor pediu para esperar um pouco. Tente de novo em instantes.</string>
+    <string name="collector_fail_unreachable">Não foi possível falar com o provedor de IA. Confira a conexão e tente de novo.</string>
+    <string name="collector_fail_other">Não deu certo: %1$s</string>
+</resources>

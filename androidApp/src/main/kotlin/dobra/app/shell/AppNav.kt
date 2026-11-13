@@ -54,6 +54,7 @@ fun AppNav(container: AppContainer) {
         ai = container.ai,
         collector = container.collector,
         maker = container.maker,
+        desk = container.desk,
     )
 }
 
