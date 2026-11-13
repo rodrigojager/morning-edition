@@ -1,4 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="sources_placeholder">As fontes da revista aparecem aqui.</string>
+
+    <!-- Fontes tab: the collection record of the edition being read -->
+    <string name="fontes_kicker">Fontes</string>
+    <string name="fontes_title">O que cada fonte respondeu</string>
+    <string name="sources_edition_line">Edição nº %1$d · %2$s · %3$s</string>
+    <string name="sources_intro">Cada linha mostra uma fonte consultada na coleta desta edição. Uma fonte que falhou aparece como falha; nada é preenchido no lugar dela.</string>
+    <string name="sources_no_edition">Ainda não há edição com registro de coleta.</string>
+    <string name="sources_none_in_record">Esta edição não guarda registro de coleta.</string>
+    <string name="sources_line_records_one">%1$d registro</string>
+    <string name="sources_line_records_many">%1$d registros</string>
+
+    <string name="collect_state_answered">Respondeu</string>
+    <string name="collect_state_partial">Respondeu em parte</string>
+    <string name="collect_state_failed">Falhou</string>
+
+    <!-- Biblioteca: "Coletar agora" -->
+    <string name="collect_now">Coletar agora</string>
+    <string name="collect_running">Coletando… %1$d de %2$d fontes</string>
+    <string name="collect_running_source">Consultando %1$s</string>
+    <string name="collect_done_title">Coleta concluída</string>
+    <string name="collect_done_summary">%1$d registros novos de %2$d fontes. Nada foi escrito ainda: são textos brutos, guardados para o próximo passo.</string>
+    <string name="collect_candidates">%1$d já publicados nesta revista, separados como candidatos a atualização</string>
+    <string name="collect_result_counts">%1$d devolvidos · %2$d com palavras-chave</string>
+    <string name="collect_result_keyword">%1$s: %2$d</string>
+    <string name="collect_result_refused">O site recusou a leitura automática (HTTP %1$d). Não foi tentado de outro jeito.</string>
+    <string name="collect_result_reason">Motivo: %1$s</string>
+    <string name="collect_no_keywords">A revista não tem palavras-chave; nenhum registro é mantido.</string>
 </resources>

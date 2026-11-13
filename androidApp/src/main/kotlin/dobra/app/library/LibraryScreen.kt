@@ -45,7 +45,11 @@ private const val NEW = "form:new"
  * editions) with the forms to create and edit them. [onOpenEdition] receives the key of the edition to read.
  */
 @Composable
-fun LibraryScreen(store: Store?, onOpenEdition: (String) -> Unit = {}) {
+fun LibraryScreen(
+    store: Store?,
+    collector: dobra.collect.worker.MagazineCollector? = null,
+    onOpenEdition: (String) -> Unit = {},
+) {
     if (store == null) {
         PlaceholderScreen(stringResource(R.string.library_placeholder), "screen-library")
         return
@@ -60,7 +64,7 @@ fun LibraryScreen(store: Store?, onOpenEdition: (String) -> Unit = {}) {
         page.startsWith("fmt:") -> page.removePrefix("fmt:").let { id ->
             dobra.app.format.FormatScreen(store, id, onBack = { go("mag:$id") }, onOpenEdition = onOpenEdition)
         }
-        else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition)
+        else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition, collector)
     }
 }
 
@@ -125,7 +129,13 @@ private fun countsLine(editions: Int, unread: Int, saved: Int, sources: Int?): S
 // ---- one magazine ----
 
 @Composable
-private fun MagazinePage(store: Store, id: String, go: (String) -> Unit, onOpenEdition: (String) -> Unit) {
+private fun MagazinePage(
+    store: Store,
+    id: String,
+    go: (String) -> Unit,
+    onOpenEdition: (String) -> Unit,
+    collector: dobra.collect.worker.MagazineCollector?,
+) {
     val magazines by remember(store) { store.magazines.observeAll() }.collectAsState(initial = null)
     val list = magazines
     if (list == null) {
@@ -191,6 +201,7 @@ private fun MagazinePage(store: Store, id: String, go: (String) -> Unit, onOpenE
             }
         }
         BtnRow { Btn(stringResource(R.string.source_add), "add-source", primary = true) { go("src:${m.id}") } }
+        if (collector != null) dobra.app.sources.CollectNow(m, collector)
 
         SectionTitle(stringResource(R.string.editions_title))
         if (editions.isEmpty()) {

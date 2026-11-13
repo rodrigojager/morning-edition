@@ -29,6 +29,18 @@ class AppContainer(private val context: Context) {
     /** AI providers, their sealed keys, the usage ledger and the one way of calling a model. */
     val ai: dobra.app.ai.AiSetup by lazy { dobra.app.ai.AiSetup.create(context) }
 
+    /** The worker: runs the collectors of a magazine over the real network (timeout, size limit, one try per page). */
+    val collector: dobra.collect.worker.MagazineCollector = object : dobra.collect.worker.MagazineCollector {
+        override suspend fun collect(
+            magazine: dobra.model.Magazine,
+            onProgress: (dobra.collect.worker.WorkerProgress) -> Unit,
+        ): dobra.collect.worker.WorkerResult = dobra.collect.worker.CollectionWorker(
+            engine = dobra.collect.engine.CollectorEngine(dobra.app.sources.HttpFetchTransport()),
+            cursors = dobra.app.sources.PrefsCursorStore(context),
+            published = dobra.collect.worker.EditionLinks(store.await().editions),
+        ).collect(magazine, onProgress)
+    }
+
     private fun readSeed(): SeedContent {
         fun asset(name: String) = context.assets.open(name).bufferedReader().use { it.readText() }
         return SeedContent(Seed.magazine(asset(Seed.MAGAZINE_FILE)), Seed.edition(asset(Seed.EDITION_FILE)))

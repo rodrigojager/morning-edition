@@ -52,6 +52,7 @@ fun AppNav(container: AppContainer) {
         store = s,
         onOpenEdition = { openKey = it },
         ai = container.ai,
+        collector = container.collector,
     )
 }
 
