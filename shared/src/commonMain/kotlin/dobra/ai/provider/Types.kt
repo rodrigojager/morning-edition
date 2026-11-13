@@ -2,9 +2,9 @@ package dobra.ai.provider
 
 import kotlinx.serialization.Serializable
 
-/** The two wire formats the app speaks. OpenAI, DeepSeek and any compatible endpoint share the first. */
+/** API-key formats plus the separate ChatGPT plan Responses protocol. */
 @Serializable
-enum class ProviderKind { OPENAI_STYLE, ANTHROPIC }
+enum class ProviderKind { OPENAI_STYLE, ANTHROPIC, CHATGPT_OAUTH }
 
 /** The three jobs of the AI; each has its own provider and model. */
 @Serializable

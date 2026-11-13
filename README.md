@@ -26,7 +26,7 @@ names. The folder is taken from the environment variable `DOBRA_SECRETS`, else t
 `dobra.secretsDir`, else `../_secrets` next to the repository. Without it the release build stops with a message
 saying what is missing.
 
-Release 0.1.0: `androidApp-release.apk`, about 14.4 MB, version 0.1.0, minSdk 28 (Android 9), targetSdk 35.
+Release 0.2.0: `androidApp-release.apk`, version code 2, minSdk 28 (Android 9), targetSdk 35.
 
 ## Install the release APK on a phone
 
@@ -34,9 +34,30 @@ Release 0.1.0: `androidApp-release.apk`, about 14.4 MB, version 0.1.0, minSdk 28
 2. On the phone, open the file from the Files app. Android asks to allow installing apps from that source
    (Settings › Apps › Special app access › Install unknown apps): allow it for the app you opened the file with.
 3. Confirm "Install". Play Protect may warn that the app is from an unknown developer: choose to install anyway.
-4. Open "Primeira Dobra". To make editions, add an AI provider and its key in Ajustes › Provedores de IA.
+4. Open "Primeira Dobra". In Ajustes › Provedores de IA, connect ChatGPT or add an AI provider with its API key.
 
-With a computer and USB debugging on: `adb install androidApp/build/outputs/apk/release/androidApp-release.apk`.
+With a computer and USB debugging on: `adb install -r androidApp/build/outputs/apk/release/androidApp-release.apk`.
 
 An update must be signed with the same key, so keep the secrets folder; a build signed with another key cannot be
 installed over this one without uninstalling it first (which deletes the app's data).
+
+## ChatGPT sign-in (0.2.0)
+
+In Ajustes › Provedores de IA, tap **Continuar com ChatGPT**. Finish authorization in the system browser,
+allow ChatGPT plan usage when offered, then return to the app. Select ChatGPT for each AI job and tap
+**Listar modelos do provedor** to choose a model available to the connected account. API-key providers remain
+available alongside ChatGPT, and each job can use a different provider.
+
+This uses the [official public OAuth flow](https://developers.openai.com/siwc/token-sharing-open-source/sign-in),
+with PKCE, state, nonce and signed ID-token validation. One account can be connected at a time on this device.
+Tokens are encrypted using AndroidKeyStore in private, non-backup storage; expiring access tokens are refreshed
+with serialized, rotating refresh-token writes. Cancel closes the pending callback. Remove signs out and attempts
+remote revocation; a warning explains when remote revocation could not be confirmed. The account registration and
+host identifier are retained for subsequent authorization. Tokens and authorization URLs are never logged.
+
+ChatGPT requests use the public Responses endpoint with `store: false` and `stream: true`; interrupted or failed
+streams are rejected. Plan eligibility, account model access and shared plan limits apply, as described in the
+[preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations).
+The usage button opens ChatGPT's usage and permission settings; the app's token ledger does not estimate remaining
+plan allowance. OAuth and AndroidKeyStore still need acceptance on a real phone; local tests use synthetic tokens
+and a loopback callback. Shared inference logic remains portable; the iOS app and its OAuth host are not implemented.

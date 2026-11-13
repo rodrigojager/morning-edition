@@ -75,7 +75,15 @@ class ProviderRegistry(private val storage: BlobStorage, private val cipher: Sec
         return config
     }
 
-    /** Removes the provider, its key and the choices that used it. */
+    /** Registers the ChatGPT plan connection without an API-key blob. */
+    fun addChatGpt(): ProviderConfig {
+        val current = _state.value
+        current.providers.firstOrNull { it.kind == ProviderKind.CHATGPT_OAUTH }?.let { return it }
+        val config = ProviderConfig("chatgpt", "ChatGPT", ProviderKind.CHATGPT_OAUTH, "https://api.openai.com/v1", "")
+        save(current.copy(providers = current.providers + config))
+        return config
+    }
+
     fun remove(id: String) {
         storage.delete(keyBlob(id))
         val current = _state.value

@@ -38,6 +38,8 @@ class UrlConnectionTransport : HttpTransport {
             val connection = URL(request.url).openConnection() as HttpURLConnection
             try {
                 connection.requestMethod = request.method
+                // Credentials must never follow an endpoint redirect to a different origin.
+                connection.instanceFollowRedirects = false
                 connection.connectTimeout = 20_000
                 connection.readTimeout = 120_000
                 request.headers.forEach { (k, v) -> connection.setRequestProperty(k, v) }
@@ -47,7 +49,17 @@ class UrlConnectionTransport : HttpTransport {
                 }
                 val status = connection.responseCode
                 val stream = if (status >= 400) connection.errorStream else connection.inputStream
-                val body = stream?.bufferedReader()?.use { it.readText() } ?: ""
+                val body = stream?.bufferedReader()?.use { reader ->
+                    val result = StringBuilder()
+                    val buffer = CharArray(8192)
+                    while (true) {
+                        val count = reader.read(buffer)
+                        if (count < 0) break
+                        if (result.length + count > 8 * 1024 * 1024) throw AiException.BadAnswer("response too large")
+                        result.append(buffer, 0, count)
+                    }
+                    result.toString()
+                } ?: ""
                 val headers = connection.headerFields.filterKeys { it != null }
                     .map { (k, v) -> k.lowercase() to v.joinToString(",") }.toMap()
                 HttpResponse(status, headers, body)

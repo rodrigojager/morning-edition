@@ -9,6 +9,7 @@ class AiGateway(
     private val transport: HttpTransport,
     private val ledger: UsageLedger,
     private val clock: () -> Long = { 0L },
+    private val oauthClient: (suspend () -> ModelClient)? = null,
 ) {
     /** Calls the model chosen for [job]. [model] and [effort] of [request] are replaced by the job's choice. */
     suspend fun call(job: AiJob, request: AiRequest, editionKey: String? = null): ModelAnswer {
@@ -41,7 +42,10 @@ class AiGateway(
         return clientOf(config).listModels()
     }
 
-    private fun clientOf(config: ProviderConfig): ModelClient {
+    private suspend fun clientOf(config: ProviderConfig): ModelClient {
+        if (config.kind == ProviderKind.CHATGPT_OAUTH) {
+            return oauthClient?.invoke() ?: throw AiException.NotConfigured("ChatGPT sign-in required")
+        }
         val key = registry.key(config.id) ?: throw AiException.NotConfigured("no key for ${config.name}")
         return clientFor(config, key, transport)
     }

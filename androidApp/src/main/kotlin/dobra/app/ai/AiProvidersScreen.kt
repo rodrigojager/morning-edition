@@ -30,6 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
@@ -55,6 +58,7 @@ import kotlinx.coroutines.launch
 fun AiProvidersScreen(ai: AiSetup, onBack: () -> Unit) {
     val colors = LocalReaderColors.current
     val settings by ai.registry.state.collectAsState()
+    val scope = rememberCoroutineScope()
     Column(
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(20.dp).testTag("screen-ai"),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -71,17 +75,39 @@ fun AiProvidersScreen(ai: AiSetup, onBack: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text(p.name, color = colors.ink, fontSize = 16.sp, modifier = Modifier.testTag("ai-provider-${p.id}"))
                     Text(
-                        stringResource(R.string.ai_key_last4, p.keyLast4),
+                        if (p.kind == ProviderKind.CHATGPT_OAUTH) stringResource(R.string.ai_chatgpt_connected)
+                        else stringResource(R.string.ai_key_last4, p.keyLast4),
                         color = colors.ink3,
                         fontFamily = AppFonts.mono,
                         fontSize = 12.sp,
                         modifier = Modifier.testTag("ai-last4-${p.id}"),
                     )
                 }
-                Chip(stringResource(R.string.ai_remove), false, "ai-remove-${p.id}") { ai.registry.remove(p.id) }
+                Chip(stringResource(R.string.ai_remove), false, "ai-remove-${p.id}") {
+                    if (p.kind == ProviderKind.CHATGPT_OAUTH) scope.launch { ai.chatGpt?.disconnect() }
+                    else ai.registry.remove(p.id)
+                }
             }
         }
 
+        ai.chatGpt?.let { auth ->
+            val status by auth.status.collectAsState()
+            val context = LocalContext.current
+            Text(stringResource(R.string.ai_chatgpt_hint), color = colors.ink2, fontSize = 14.sp)
+            status.account?.let { Text(stringResource(R.string.ai_chatgpt_account, it), color = colors.ink2, fontSize = 14.sp) }
+            Chip(stringResource(if (status.busy) R.string.ai_chatgpt_cancel else R.string.ai_chatgpt_login), false, "ai-chatgpt-login") {
+                if (status.busy) auth.cancel()
+                else auth.start { address ->
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(address)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                }
+            }
+            if (status.busy) Text(stringResource(R.string.ai_chatgpt_waiting), color = colors.ink2, fontSize = 14.sp)
+            if (status.error) Text(stringResource(R.string.ai_chatgpt_error), color = colors.accent, fontSize = 14.sp)
+            if (status.revocationUnconfirmed) Text(stringResource(R.string.ai_chatgpt_revoke_warning), color = colors.accent, fontSize = 14.sp)
+            Chip(stringResource(R.string.ai_chatgpt_usage), false, "ai-chatgpt-usage") {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://chatgpt.com/settings/usage")))
+            }
+        }
         AddProviderForm(ai)
 
         Label(stringResource(R.string.ai_jobs_title))

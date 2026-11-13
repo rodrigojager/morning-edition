@@ -25,6 +25,7 @@ interface ModelClient {
 fun clientFor(config: ProviderConfig, key: String, transport: HttpTransport): ModelClient = when (config.kind) {
     ProviderKind.OPENAI_STYLE -> OpenAiStyleClient(transport, config.baseUrl, key)
     ProviderKind.ANTHROPIC -> AnthropicClient(transport, config.baseUrl, key)
+    ProviderKind.CHATGPT_OAUTH -> throw AiException.NotConfigured("use the ChatGPT session client")
 }
 
 private val wire = Json { ignoreUnknownKeys = true }

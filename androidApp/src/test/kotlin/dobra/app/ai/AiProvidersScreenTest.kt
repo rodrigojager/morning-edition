@@ -77,6 +77,20 @@ class AiProvidersScreenTest {
     private fun type(tag: String, text: String) = compose.onNodeWithTag(tag).performScrollTo().performTextInput(text)
 
     @Test
+    fun oauthEntryAndApiKeyEntryAreBothVisible() {
+        val transport = OneAnswerTransport(200, "{}")
+        val auth = ChatGptAuth(storage, AesGcmCipher { secret }, transport, registry)
+        val setup = AiSetup(registry, ledger, AiGateway(registry, transport, ledger), chatGpt = auth)
+        compose.setContent {
+            AppShell(null, DeviceSettings(), onSettings = {}, initialTab = Routes.SETTINGS, store = store, ai = setup)
+        }
+        openRoute()
+        compose.onNodeWithTag("ai-chatgpt-login").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("ai-preset-openai").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("ai-key").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun addChooseAndRemoveAProvider() {
         val setup = ai()
         compose.setContent {

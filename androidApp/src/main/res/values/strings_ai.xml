@@ -4,7 +4,7 @@
     <string name="ai_route">Provedores de IA</string>
     <string name="ai_back">Voltar</string>
     <string name="ai_added_title">PROVEDORES ADICIONADOS</string>
-    <string name="ai_none">Nenhum provedor ainda. Adicione um abaixo com a sua chave.</string>
+    <string name="ai_none">Nenhum provedor ainda. Conecte o ChatGPT ou adicione um com sua chave.</string>
     <string name="ai_key_last4">chave terminada em %1$s</string>
     <string name="ai_remove">Remover</string>
     <string name="ai_add_title">ADICIONAR PROVEDOR</string>
@@ -30,4 +30,15 @@
     <string name="ai_error_refused">O provedor recusou a chave.</string>
     <string name="ai_error_rate">O provedor pediu para esperar um pouco. Tente de novo em instantes.</string>
     <string name="ai_error_other">Não foi possível listar os modelos agora.</string>
+    <string name="ai_chatgpt_login">Continuar com ChatGPT</string>
+    <string name="ai_chatgpt_cancel">Cancelar login</string>
+    <string name="ai_chatgpt_connected">Conectado pelo plano ChatGPT</string>
+    <string name="ai_chatgpt_hint">Use seu plano ChatGPT, quando elegível, sem chave de API. Depois de conectar, escolha ChatGPT e liste os modelos em cada trabalho abaixo. Os limites do seu plano se aplicam.</string>
+    <string name="ai_chatgpt_waiting">Conclua o login no navegador e volte ao app. A conexão será confirmada aqui.</string>
+    <string name="ai_chatgpt_error">Não foi possível conectar. Confira se autorizou o uso do plano e tente novamente. A conexão anterior foi mantida, se houver.</string>
+    <string name="ai_chatgpt_revoke_warning">A conexão foi removida deste aparelho, mas a revogação remota não foi confirmada. Desconecte o app também nos ajustes do ChatGPT.</string>
+    <string name="ai_chatgpt_account">Conta ChatGPT: %1$s</string>
+    <string name="ai_chatgpt_usage">Ver uso e permissões no ChatGPT</string>
+    <string name="ai_chatgpt_callback_received">Login recebido. Volte ao Primeira Dobra para conferir a conexão.</string>
+    <string name="ai_chatgpt_callback_refused">Solicitação recusada.</string>
 </resources>
