@@ -4,12 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -32,6 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dobra.app.R
@@ -151,41 +158,64 @@ fun EditionTab(
     }
 }
 
-/** The cover: the magazine's name, the edition's number and date, and the first story. */
+/** A self-contained editorial cover: masthead, dateline, lead and summary, also when no image was collected. */
 @Composable
 internal fun CoverContent(
     magazine: Magazine, edition: Edition, first: Item?, modifier: Modifier = Modifier, padded: Boolean = true,
 ) {
     val colors = LocalReaderColors.current
     val scale = LocalTextScale.current
-    Column(
+    BoxWithConstraints(
         modifier
             .fillMaxWidth()
             .padding(horizontal = if (padded) 24.dp else 0.dp, vertical = if (padded) 32.dp else 12.dp)
             .testTag("cover"),
-        verticalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                magazine.name, color = colors.ink, fontFamily = AppFonts.display, fontWeight = FontWeight.Bold,
-                fontSize = (42 * scale).sp, lineHeight = (44 * scale).sp,
-            )
-            Text(
-                stringResource(R.string.edition_number_date, edition.number, edition.date),
-                color = colors.ink3, fontFamily = AppFonts.mono, fontSize = (12 * scale).sp,
-            )
-        }
-        if (first != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        val compact = maxHeight < 480.dp || scale > 1.2f
+        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    stringResource(R.string.cover_first_story).uppercase(), color = colors.accent,
-                    fontFamily = AppFonts.mono, fontWeight = FontWeight.SemiBold, fontSize = (11.5f * scale).sp,
-                    letterSpacing = 1.6.sp,
+                    buildAnnotatedString {
+                        val firstSpace = magazine.name.indexOf(' ')
+                        if (firstSpace < 0) append(magazine.name) else {
+                            append(magazine.name.substring(0, firstSpace + 1))
+                            withStyle(SpanStyle(color = colors.accent, fontStyle = FontStyle.Italic)) {
+                                append(magazine.name.substring(firstSpace + 1))
+                            }
+                        }
+                    }, color = colors.ink, fontFamily = AppFonts.display, fontWeight = FontWeight.Bold,
+                    fontSize = ((if (compact) 34 else 42) * scale).sp,
+                    lineHeight = ((if (compact) 36 else 44) * scale).sp,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis,
                 )
+                Spacer(Modifier.fillMaxWidth().height(2.dp).background(colors.ink))
+                Spacer(Modifier.fillMaxWidth().height(1.dp).background(colors.ink))
                 Text(
-                    first.title(), color = colors.ink, fontFamily = AppFonts.display, fontWeight = FontWeight(620),
-                    fontSize = (28 * scale).sp, lineHeight = (31 * scale).sp, modifier = Modifier.testTag("cover-title"),
+                    stringResource(R.string.edition_number_date, edition.number, edition.date),
+                    color = colors.ink3, fontFamily = AppFonts.mono, fontSize = (12 * scale).sp,
                 )
+            }
+            if (first != null) {
+                Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        stringResource(R.string.cover_first_story).uppercase(), color = colors.accent,
+                        fontFamily = AppFonts.mono, fontWeight = FontWeight.SemiBold, fontSize = (11.5f * scale).sp,
+                        letterSpacing = 1.6.sp,
+                    )
+                    Text(
+                        first.title(), color = colors.ink, fontFamily = AppFonts.display, fontWeight = FontWeight(620),
+                        fontSize = ((if (compact) 24 else 28) * scale).sp,
+                        lineHeight = ((if (compact) 27 else 31) * scale).sp,
+                        maxLines = if (compact) 4 else 6, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.testTag("cover-title"),
+                    )
+                    val summary = first.blocks.firstOrNull { it.type == "summary" }?.text("text").orEmpty()
+                    if (summary.isNotBlank() && !compact) Text(
+                        summary, color = colors.ink2, fontFamily = AppFonts.text,
+                        fontSize = (16 * scale).sp, lineHeight = (22 * scale).sp,
+                        maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("cover-summary"),
+                    )
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 package dobra.make
 
 import dobra.ai.provider.AiJob
+import dobra.ai.provider.ProviderKind
 import dobra.ai.provider.ProviderRegistry
 import dobra.ai.provider.UsageLedger
 import dobra.ai.provider.UsageTotal
@@ -40,9 +41,11 @@ object RewriteSetup {
         val settings = registry.state.value
         if (settings.providers.isEmpty()) return MissingSetup.NO_PROVIDER
         val choice = settings.choices[AiJob.REWRITE] ?: return MissingSetup.NO_CHOICE
-        if (settings.providers.none { it.id == choice.providerId }) return MissingSetup.NO_CHOICE
+        val provider = settings.providers.firstOrNull { it.id == choice.providerId } ?: return MissingSetup.NO_CHOICE
         if (choice.model.isBlank()) return MissingSetup.NO_MODEL
-        if (runCatching { registry.key(choice.providerId) }.getOrNull() == null) return MissingSetup.NO_KEY
+        // OAuth credentials are owned and renewed by the gateway's account client, not the API-key registry.
+        if (provider.kind != ProviderKind.CHATGPT_OAUTH &&
+            runCatching { registry.key(choice.providerId) }.getOrNull() == null) return MissingSetup.NO_KEY
         return null
     }
 }

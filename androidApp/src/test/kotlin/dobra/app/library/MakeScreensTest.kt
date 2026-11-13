@@ -6,6 +6,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dobra.ai.provider.AiGateway
 import dobra.ai.provider.AiJob
@@ -20,6 +22,11 @@ import dobra.ai.provider.HttpRequest
 import dobra.ai.provider.HttpResponse
 import dobra.ai.provider.HttpTransport
 import dobra.ai.provider.JobChoice
+import dobra.ai.provider.Effort
+import dobra.ai.provider.ModelClient
+import dobra.ai.provider.ModelAnswer
+import dobra.ai.provider.AiRequest
+import dobra.ai.provider.TokenUsage
 import dobra.ai.provider.MemoryBlobStorage
 import dobra.ai.provider.ProviderKind
 import dobra.ai.provider.ProviderRegistry
@@ -60,6 +67,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 import java.nio.file.Files
 
 private object PlainCipher : SecretCipher {
@@ -185,6 +193,53 @@ class MakeScreensTest {
                 if (e != null && m != null) EditionTab(m, e, onBackToLibrary = {})
             }
         }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h891dp")
+    fun editedInstructionsReachChatGptGenerationWithTheSavedModelWithoutAnApiKey() {
+        val storage = MemoryBlobStorage()
+        val registry = ProviderRegistry(storage, PlainCipher)
+        val plan = registry.addChatGpt()
+        registry.choose(AiJob.REWRITE, JobChoice(plan.id, "account-model", Effort.MEDIUM))
+        val restored = ProviderRegistry(storage, PlainCipher)
+        val ledger = UsageLedger(storage)
+        val sent = mutableListOf<AiRequest>()
+        val answers = ArrayDeque(listOf(selection, answer("Uma edição pelo ChatGPT", tool.link)))
+        val client = object : ModelClient {
+            override suspend fun listModels() = listOf("account-model")
+            override suspend fun complete(request: AiRequest): ModelAnswer {
+                sent += request
+                return ModelAnswer(answers.removeFirst(), TokenUsage(21, 8))
+            }
+        }
+        val transport = object : HttpTransport {
+            override suspend fun send(request: HttpRequest): HttpResponse = error("API-key transport must not be used")
+        }
+        val setup = AiSetup(restored, ledger, AiGateway(restored, transport, ledger, oauthClient = { client }))
+        val collector = Gated()
+        showLibrary(MakeRunner(scope, { store }, setup, collector, today = { "2026-11-13" }))
+        click("mag-open-$id")
+        // Neither action requires scrolling past the recipe or the ten source cards on a phone.
+        tag("make-now").assertIsDisplayed()
+        tag("edition-delete-${EditionFixture.edition.key}").assertIsDisplayed()
+        val instructions = "Escrever em Portugês (Brasil), no tom \"mais didático\". Só trazer ferramentas/sdk/skills/bibliotecas/MCP/serviços e afins.Não tenho interesse em palpites e artigos de opinião. O objetivo é encontrar ferramentas e serviços que otimizem meu trabalho no dia a dia. Ferramentas de trabalho novas com ou sem IA e que podem complementar ou se aproveitar ou não de IA. De preferência (mas não exclusivamente) feitos pela comunidade, gratuitos e de código aberto (não necessariamente todas essas coisas e dependendo mesmo que seja pago e código fechado pode ser interessante)"
+        click("edit-prompt")
+        tag("field-prompt").performTextReplacement(instructions)
+        click("prompt-save")
+        tag("screen-magazine")
+        assertEquals(instructions, runBlocking { store.magazines.get(id) }!!.prompt)
+        click("edit-prompt")
+        tag("field-prompt").assertTextEquals(instructions)
+        click("prompt-cancel")
+        click("make-now")
+        textIs("make-progress", "Coletando… 1 de 2 fontes")
+        collector.gate.complete(Unit)
+        tag("make-result")
+        assertEquals(2, sent.size)
+        assertTrue(sent.all { it.model == "account-model" && it.effort == Effort.MEDIUM })
+        assertTrue(sent.all { instructions in it.user })
+        assertEquals(2, runBlocking { store.editions.get("$id/2026-11-13") }!!.number)
     }
 
     @Test

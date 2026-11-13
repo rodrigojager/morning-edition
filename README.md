@@ -26,7 +26,50 @@ names. The folder is taken from the environment variable `DOBRA_SECRETS`, else t
 `dobra.secretsDir`, else `../_secrets` next to the repository. Without it the release build stops with a message
 saying what is missing.
 
-Release 0.3.0: `androidApp-release.apk`, version code 3, minSdk 28 (Android 9), targetSdk 35.
+Release 0.3.1: `androidApp-release.apk`, version code 4, minSdk 28 (Android 9), targetSdk 35.
+
+## Magazine instructions and editions
+
+Open a magazine in **Biblioteca**. **Gerar edição agora**, **Editar instruções da próxima edição** and the
+edition list appear before the recipe's source cards. Each edition offers **Abrir**, a read/unread mark and
+**Apagar edição**, with confirmation. Editing instructions saves the recipe for subsequent generations; it does
+not rewrite existing editions. The dedicated instructions editor preserves the rest of the current recipe.
+
+The starter recipe asks for practical tools, SDKs, CLIs, MCPs, skills, libraries, applications and services, excluding
+opinion articles and predictions. Community, free and open-source projects are preferences, not requirements.
+Instructions reach both AI steps: candidate selection and item writing. Explicit exclusions take priority over
+ranking and feedback. These are AI decisions, so semantic compliance still needs review with the chosen live model.
+An empty keyword list keeps all valid source records for AI curation; a nonempty list enables the literal keyword
+prefilter. Keywords are optional and do not replace the instructions.
+
+**Mais disso** and **Menos disso** are per-magazine preferences. Up to ten titles marked each way are included in
+both AI prompts, together with the recipe. They influence subsequent editions, do not train a model or change
+collectors, and cannot override explicit exclusions. A mark only supplies an example while its edition remains
+stored, because that edition supplies the title.
+
+## Starter collectors and collector generation
+
+The first bundled edition is a manually curated demonstration. It was not produced by saved collectors. Version
+0.3.1 also bundles collectors and installs missing ones on existing copies of the starter magazine, preserving
+instructions, custom collectors, changed source addresses and deleted sources/editions. Nine sources produce valid
+records in saved-response tests. Apiiro's current page is a JavaScript shell without readable article links; its
+collector is marked **em reparo** and fails explicitly rather than supplying invented items. Python forum collection
+currently reads the Python feed; the older demonstration also contained manually selected Rust material. Reddit
+subfeeds can refuse access individually, and live source availability is not guaranteed by saved-response tests.
+
+ChatGPT collector generation uses the saved OAuth account and the model/effort selected for the collector job;
+it does not require an API key. The **Usar esta configuração em todas as tarefas** action also configures that job.
+
+Before asking the AI to write a collector, Kotlin code discovers feed/JSON links explicitly announced by the page
+and reads at most two allowed addresses once each. Bounded evidence includes those responses and embedded JSON,
+even when it occurs beyond the raw HTML prefix shown to the AI. The existing source-domain restriction remains.
+Discovery does not guess endpoints, execute site JavaScript or automate a browser. HTTP 403/429 stops discovery.
+If acceptance finds a new response while warming up a generated script, the next repair prompt includes that
+response and the actual failure. Scripts are saved only after two matching, valid runs against the saved copy.
+
+This adapts the observed-response and replay-validation ideas described by
+[api-anything](https://github.com/goodnight000/api-anything/blob/main/docs/REFERENCE.md) to the existing Kotlin and
+QuickJS implementation. It adds no runtime, package dependency or language.
 
 ## Install the release APK on a phone
 

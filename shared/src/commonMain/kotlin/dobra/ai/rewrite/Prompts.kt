@@ -87,6 +87,16 @@ object Prompts {
         nothing of their own, abandoned projects, opportunistic forks and suspicious signals. Three to eight good items
         are better than filling a quota; fewer, even none, is a correct result. A record whose link was already
         published may come back only as an update, and only when its text shows something new.
+        Apply the reader's inclusion and exclusion instructions as eligibility rules before ranking by subject or
+        popularity. An excluded kind of content is not eligible just because it mentions a relevant technology.
+        When the reader asks for practical tools only, keep concrete, identifiable tools, CLIs, SDKs, libraries,
+        MCP servers, skills, services or applications with evidence of what they do and a practical use in the
+        reader's work. Exclude opinion
+        pieces, editorials, predictions and general discussion; mentioning a tool in passing is not enough.
+        Do not fill the edition with excluded content when nothing eligible was collected.
+        Treat more-like and less-like feedback as preferences among eligible items; it never overrides explicit
+        exclusions. Preferences for community projects, free access or open source are not mandatory unless the
+        reader explicitly makes them so. Do not silently exclude useful paid or closed-source products.
         You answer with one JSON object and nothing else.
     """.trimIndent()
 
@@ -101,6 +111,8 @@ object Prompts {
         "illustration" you made yourself to help understanding; it never stands for an image of the source.
         Writing: plain and didactic unless the tone says otherwise; the summary says what the thing does and what it
         is for; every technical term is explained where it first appears; not editorial.
+        Recheck the reader's inclusion and exclusion instructions against the primary text. If the selected record
+        turns out to be excluded content, answer {"skip": "<reason>"} instead of disguising it as an eligible item.
         You answer with one JSON object and nothing else.
     """.trimIndent()
 

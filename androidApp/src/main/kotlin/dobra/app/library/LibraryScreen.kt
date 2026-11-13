@@ -61,6 +61,7 @@ fun LibraryScreen(
         page == LIST -> LibraryList(store, go)
         page == NEW -> MagazineForm(store, null, go)
         page.startsWith("form:") -> MagazineForm(store, page.removePrefix("form:"), go)
+        page.startsWith("prompt:") -> PromptForm(store, page.removePrefix("prompt:"), go)
         page.startsWith("src:") -> SourceForm(store, page.removePrefix("src:"), go, desk)
         page.startsWith("fmt:") -> page.removePrefix("fmt:").let { id ->
             dobra.app.format.FormatScreen(store, id, onBack = { go("mag:$id") }, onOpenEdition = onOpenEdition, maker = maker)
@@ -172,6 +173,28 @@ private fun MagazinePage(
             countsLine(editions.size, unread, saved.count { it.key.startsWith(m.id + "/") }, m.sources.size),
             "magazine-counts",
         )
+        SectionTitle(stringResource(R.string.editions_title))
+        Btn(stringResource(R.string.prompt_edit), "edit-prompt") { go("prompt:${m.id}") }
+        if (maker != null) MakeNow(m, maker, onOpenEdition)
+        if (editions.isEmpty()) {
+            Empty(stringResource(R.string.editions_none_title), stringResource(R.string.editions_none_body), "editions-empty")
+        }
+        editions.forEach { e ->
+            EditionCard(
+                e = e,
+                read = e.key in readKeys,
+                confirming = confirm == "ed:${e.key}",
+                onOpen = { onOpenEdition(e.key) },
+                onToggle = { scope.launch { store.marks.setEditionRead(e.key, e.key !in readKeys); ticks++ } },
+                onAsk = { confirm = "ed:${e.key}" },
+                onYes = {
+                    confirm = null
+                    scope.launch { store.editions.delete(e.key); ticks++ }
+                },
+                onNo = { confirm = null },
+            )
+        }
+
         BtnRow {
             Btn(stringResource(R.string.magazine_edit), "edit-magazine") { go("form:${m.id}") }
             Btn(stringResource(R.string.magazine_delete), "delete-magazine") { confirm = "mag" }
@@ -205,28 +228,6 @@ private fun MagazinePage(
         }
         BtnRow { Btn(stringResource(R.string.source_add), "add-source", primary = true) { go("src:${m.id}") } }
         if (collector != null) dobra.app.sources.CollectNow(m, collector)
-
-        SectionTitle(stringResource(R.string.editions_title))
-        if (maker != null) MakeNow(m, maker, onOpenEdition)
-        if (editions.isEmpty()) {
-            Empty(stringResource(R.string.editions_none_title), stringResource(R.string.editions_none_body), "editions-empty")
-        }
-        editions.forEach { e ->
-            EditionCard(
-                e = e,
-                m = m,
-                read = e.key in readKeys,
-                confirming = confirm == "ed:${e.key}",
-                onOpen = { onOpenEdition(e.key) },
-                onToggle = { scope.launch { store.marks.setEditionRead(e.key, e.key !in readKeys); ticks++ } },
-                onAsk = { confirm = "ed:${e.key}" },
-                onYes = {
-                    confirm = null
-                    scope.launch { store.editions.delete(e.key); ticks++ }
-                },
-                onNo = { confirm = null },
-            )
-        }
     }
 }
 
@@ -299,7 +300,6 @@ private fun SourceRow(m: Magazine, s: Source, desk: CollectorDesk?, onRemove: ()
 @Composable
 private fun EditionCard(
     e: EditionSummary,
-    m: Magazine,
     read: Boolean,
     confirming: Boolean,
     onOpen: () -> Unit,
@@ -340,6 +340,28 @@ private fun EditionCard(
 
 // ---- forms ----
 
+@Composable
+private fun PromptForm(store: Store, id: String, go: (String) -> Unit) {
+    val magazine by produceState<Magazine?>(null, id) { value = store.magazines.get(id) }
+    val current = magazine ?: return
+    var prompt by rememberSaveable(id) { mutableStateOf(current.prompt) }
+    val scope = rememberCoroutineScope()
+    LibraryPage("screen-prompt-form") {
+        Headline(stringResource(R.string.prompt_edit), 24)
+        Body(stringResource(R.string.form_prompt_hint))
+        Field(stringResource(R.string.form_prompt), prompt, "field-prompt", { prompt = it }, singleLine = false)
+        BtnRow {
+            Btn(stringResource(R.string.form_save), "prompt-save", primary = true) {
+                scope.launch {
+                    store.magazines.get(id)?.let { store.magazines.save(it.copy(prompt = prompt)) }
+                    go("mag:$id")
+                }
+            }
+            Btn(stringResource(R.string.form_cancel), "prompt-cancel") { go("mag:$id") }
+        }
+    }
+}
+
 private val DraftSaver = listSaver<RecipeDraft, Any>(
     save = { listOf(it.name, it.about, it.subjects, it.keywords, it.language, it.tone, it.prompt, it.weekly, it.hour) },
     restore = {
@@ -372,6 +394,7 @@ private fun MagazineForm(store: Store, id: String?, go: (String) -> Unit) {
         Field(stringResource(R.string.form_about), draft.about, "field-about", { draft = draft.copy(about = it) }, singleLine = false)
         Field(stringResource(R.string.form_subjects), draft.subjects, "field-subjects", { draft = draft.copy(subjects = it) })
         Field(stringResource(R.string.form_keywords), draft.keywords, "field-keywords", { draft = draft.copy(keywords = it) })
+        Meta(stringResource(R.string.form_keywords_hint))
         Meta(stringResource(R.string.form_language))
         FlowChoices {
             listOf("pt-BR", "en", "es").forEach { code ->
@@ -385,6 +408,7 @@ private fun MagazineForm(store: Store, id: String?, go: (String) -> Unit) {
             }
         }
         Field(stringResource(R.string.form_prompt), draft.prompt, "field-prompt", { draft = draft.copy(prompt = it) }, singleLine = false)
+        Meta(stringResource(R.string.form_prompt_hint))
         Meta(stringResource(R.string.form_cadence))
         FlowChoices {
             Choice(stringResource(R.string.form_cadence_daily), !draft.weekly, "field-cadence-daily") { draft = draft.copy(weekly = false) }
@@ -400,8 +424,8 @@ private fun MagazineForm(store: Store, id: String?, go: (String) -> Unit) {
                     scope.launch {
                         val taken = store.magazines.all().map { it.id }
                         store.magazines.save(draft.applyTo(base, uniqueId(slugOf(draft.name), taken)))
+                        go(back)
                     }
-                    go(back)
                 }
             }
             Btn(stringResource(R.string.form_cancel), "form-cancel") { go(back) }

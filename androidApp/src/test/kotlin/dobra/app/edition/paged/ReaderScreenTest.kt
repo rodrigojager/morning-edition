@@ -29,6 +29,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class ReaderScreenTest {
@@ -39,10 +41,12 @@ class ReaderScreenTest {
     private val edition = EditionFixture.edition
     private val stories = edition.items.filter { it.kind == ItemKind.STORY }
     private var mode by mutableStateOf(ReadingMode.BOOK)
+    private var previewView: android.view.View? = null
 
     private fun show(start: ReadingMode = ReadingMode.BOOK) {
         mode = start
         compose.setContent {
+            previewView = androidx.compose.ui.platform.LocalView.current
             AppTheme { ReaderScreen(magazine, edition, mode, onMode = { mode = it }, onBackToLibrary = {}) }
         }
         compose.waitForIdle()
@@ -80,6 +84,7 @@ class ReaderScreenTest {
 
     @Test
     @Config(qualifiers = "w384dp-h800dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun narrowShowsOnePagePerScreenAndTheShortCounter() {
         show()
         assertEquals("Folha", chip())
@@ -90,6 +95,43 @@ class ReaderScreenTest {
         assertEquals(1, n)
         assertTrue("a whole edition takes many pages, got $total", total > 20)
         compose.onNodeWithTag("cover").assertIsDisplayed()
+        compose.onNodeWithTag("cover-title").assertIsDisplayed()
+        compose.onNodeWithTag("cover-summary").assertIsDisplayed()
+        assertCoverLeadFits()
+        preview("reader-cover")
+    }
+
+    @Test
+    @Config(qualifiers = "w384dp-h600dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun compactCoverKeepsItsLeadOnThePageWithLargerText() {
+        compose.setContent {
+            previewView = androidx.compose.ui.platform.LocalView.current
+            AppTheme(textScale = 1.3f) {
+                ReaderScreen(magazine, edition, ReadingMode.SHEET, onMode = {}, onBackToLibrary = {})
+            }
+        }
+        compose.waitForIdle()
+        assertCoverLeadFits()
+        preview("reader-cover-compact")
+    }
+
+    private fun assertCoverLeadFits() {
+        val cover = compose.onNodeWithTag("cover").getUnclippedBoundsInRoot()
+        val lead = compose.onNodeWithTag("cover-title").getUnclippedBoundsInRoot()
+        assertTrue("lead must fit on the cover: $lead in $cover", lead.top >= cover.top && lead.bottom <= cover.bottom)
+    }
+
+    private fun preview(name: String) {
+        val directory = System.getenv("DOBRA_READER_PREVIEWS") ?: return
+        compose.runOnIdle {
+            val view = checkNotNull(previewView)
+            val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+            view.draw(android.graphics.Canvas(bitmap))
+            val file = File(directory, "$name.png")
+            file.parentFile?.mkdirs()
+            file.outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+        }
     }
 
     @Test

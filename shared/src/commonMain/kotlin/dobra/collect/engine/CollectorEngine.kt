@@ -150,7 +150,7 @@ class CollectorEngine(
         val kept = wellFormed.filter { record ->
             val found = KeywordMatcher.matching(input.keywords, record.title, record.rawText)
             found.forEach { perKeyword[it] = (perKeyword[it] ?: 0) + 1 }
-            found.isNotEmpty()
+            input.keywords.isEmpty() || found.isNotEmpty()
         }
         val fetchTrouble = fetches.any { it.status !in 200..399 }
         return CollectorRun(

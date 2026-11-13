@@ -1,0 +1,28 @@
+[
+  {
+    "title": "Long Live Rails",
+    "url": "https://dev.to/ben/long-live-rails-3p21",
+    "published_at": "2026-11-12T15:30:50Z",
+    "description": "When DHH took the stage at Rails World 2026 and talked openly about going \"pencils down\" on...",
+    "tag_list": [
+      "rails",
+      "ruby",
+      "rust",
+      "ai"
+    ],
+    "public_reactions_count": 118
+  },
+  {
+    "title": "Our Looping Factory Cut DEV Page Load Time by 75% and Counting",
+    "url": "https://dev.to/dailycontext/our-looping-factory-cut-dev-page-load-time-by-75-and-counting-1hnf",
+    "published_at": "2026-11-09T16:12:25Z",
+    "description": "A month ago, an average web request on DEV took about 70 milliseconds inside Rails, with P99 response...",
+    "tag_list": [
+      "ai",
+      "agents",
+      "automation",
+      "architecture"
+    ],
+    "public_reactions_count": 137
+  }
+]

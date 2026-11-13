@@ -1,5 +1,7 @@
 package dobra.store
 
+import androidx.sqlite.driver.bundled.BundledSQLiteDriver
+import dobra.model.CollectorInfo
 import dobra.model.Edition
 import dobra.model.EditionState
 import dobra.model.Item
@@ -71,6 +73,35 @@ class StoreTest {
         store.magazines.delete(magazine.id)
         store = reopen(store)
         assertEquals(0, store.magazines.all().size)
+    }
+
+    @Test
+    fun upgradingTheOldStarterFillsOnlyMissingCollectorsAndDoesNotRestoreDeletedContent() = runBlocking {
+        var store = open(withSeed = false)
+        val starter = seed()
+        val custom = CollectorInfo("function collect(){ return { records:[] }; }", 8, "2026-11-13", "reader")
+        val sources = starter.magazine.sources.dropLast(1).mapIndexed { index, source ->
+            source.copy(collector = if (index == 0) custom else null)
+        }.map { if (it.id == "dev") it.copy(url = "https://dev.to/custom") else it }
+        val edited = store.magazines.save(starter.magazine.copy(prompt = "Only practical tools, no opinion.", sources = sources))
+        store.editions.put(starter.edition)
+        store.editions.delete(starter.edition.key)
+        store.close()
+        opened.remove(store)
+        // State of an installation before starter_collectors_v1 existed.
+        BundledSQLiteDriver().open(File(root, "dobra.db").path).use { db ->
+            db.prepare("INSERT INTO setting (key, value) VALUES ('seeded', '1')").use { it.step() }
+        }
+        store = open()
+        val upgraded = store.magazines.get(edited.id)!!
+        assertEquals(edited.prompt, upgraded.prompt)
+        assertEquals(edited.sources.map { it.id }, upgraded.sources.map { it.id })
+        assertEquals(custom, upgraded.sources.first().collector)
+        assertNull(upgraded.sources.first { it.id == "dev" }.collector)
+        assertTrue(upgraded.sources.filter { it.id != "dev" }.all { it.collector != null })
+        assertTrue(store.editions.list(edited.id).isEmpty())
+        assertTrue(store.editions.isDeleted(starter.edition.key))
+        assertEquals(upgraded, reopen(store).magazines.get(edited.id))
     }
 
     @Test

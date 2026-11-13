@@ -51,7 +51,7 @@
   "keywords": [],
   "language": "pt-BR",
   "tone": "didatico",
-  "prompt": "",
+  "prompt": "Escreva em Português (Brasil), em tom didático. Inclua apenas ferramentas, SDKs, CLIs, bibliotecas, servidores MCP, skills, aplicações e serviços concretos que possam melhorar meu trabalho diário, com ou sem IA. Explique o que fazem, como funcionam, por que foram selecionados e um uso prático no meu fluxo de trabalho. Exclua opiniões, editoriais, palpites, previsões e discussões gerais, mesmo quando mencionam uma tecnologia relevante. Prefira projetos da comunidade, gratuitos e de código aberto, sem exigir essas características: produtos pagos e de código fechado também podem ser interessantes. Não preencha espaço com conteúdo fora desses critérios.",
   "format": {
     "accepted": [
       "illustration",

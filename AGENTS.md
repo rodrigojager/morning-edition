@@ -50,7 +50,8 @@ Collectors (one TypeScript script per source) run in `shared/.../dobra/collect/e
   `Math.random()` throw; `WeakRef` and `FinalizationRegistry` are removed. Limits per run (`CollectorLimits`): time,
   memory, stack, characters of the result, number of records, number of fetches, size of a response.
 - **Output:** checked against the record shape (bad records are refused with the reason and never used), then kept
-  only when a keyword appears word for word in the title or text, ignoring case and accents (`KeywordMatcher`).
+  when a keyword appears word for word in the title or text, ignoring case and accents (`KeywordMatcher`). An empty
+  keyword list disables this optional prefilter, keeping all valid records for AI curation.
 - Saved pages and hand-written test collectors live in `shared/fixtures/collect` (invented content on
   `example.org`).
 - Android host tests swap `quickjs-kt-android` for `quickjs-kt-jvm` (see `shared/build.gradle.kts`): a desktop JVM

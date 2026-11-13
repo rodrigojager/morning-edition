@@ -94,7 +94,7 @@ class LibraryScreenTest {
         tag("recipe-subjects")
         compose.onNode(hasText("Segurança") and hasAnyAncestor(hasTestTag("recipe-subjects"))).assertExists()
         tag("recipe-keywords").assertTextEquals("não informados")
-        tag("recipe-ai").assertTextEquals("Escrever em Português (Brasil), no tom “mais didático”. Sem instruções a mais.")
+        tag("recipe-ai").assertTextEquals("Escrever em Português (Brasil), no tom “mais didático”. ${EditionFixture.magazine.prompt}")
         tag("recipe-format").assertTextEquals("19 de 19 tipos de bloco aceitos.")
         click("recipe-format-link")
         tag("screen-format")
@@ -108,7 +108,7 @@ class LibraryScreenTest {
             compose.onNode(hasText(s.name) and hasAnyAncestor(hasTestTag("source-${s.id}"))).assertExists()
             compose.onNode(hasText(s.url) and hasAnyAncestor(hasTestTag("source-${s.id}"))).assertExists()
             compose.onNode(hasText("Procurar: ${s.liked}") and hasAnyAncestor(hasTestTag("source-${s.id}"))).assertExists()
-            tag("source-state-${s.id}").assertTextEquals("sem coletor")
+            tag("source-state-${s.id}").assertTextEquals(if (s.id == "blog-da-apiiro") "em reparo" else "funcionando")
         }
         tag("edition-open-$key").assertTextEquals("Abrir")
         tag("edition-toggle-$key").assertTextEquals("Marcar como lida")

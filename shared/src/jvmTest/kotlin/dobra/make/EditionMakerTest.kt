@@ -207,6 +207,8 @@ class EditionMakerTest {
         val seedEdition = store.editions.list(magazine.id).single()
         val liked = store.editions.get(seedEdition.key)!!.items.first()
         store.marks.setFeedback("${seedEdition.key}/${liked.id}", Feedback.MORE)
+        val disliked = store.editions.get(seedEdition.key)!!.items.last()
+        store.marks.setFeedback("${seedEdition.key}/${disliked.id}", Feedback.LESS)
         val pages = PageReader { url -> if (url == tool.link) "README do agent-guard: instale com dotnet tool install." else null }
         val ai = Recorded(listOf(selection, toolItem, noteItem))
         maker(ai, pages).make(magazine, run(listOf(tool, notes, bait)))
@@ -220,6 +222,7 @@ class EditionMakerTest {
             assertTrue("Tone: didatico (plain and didactic" in prompt)
             assertTrue("Interests the reader switched off (leave them out): Rust" in prompt)
             assertTrue(ItemRules.titleOf(liked.blocks)!! in prompt)
+            assertTrue(ItemRules.titleOf(disliked.blocks)!! in prompt)
             // the links already published: every source link of the seed edition
             assertTrue("https://github.com/cloudflare/security-audit-skill" in prompt)
             assertTrue("https://github.com/trending?since=weekly" in prompt)
@@ -237,6 +240,25 @@ class EditionMakerTest {
         assertTrue("(it could not be read: say so in a note block" in ai.prompts[2])
         // JSON output is asked for on every call
         ai.transport.sent.forEach { assertTrue("\"response_format\":{\"type\":\"json_object\"}" in it.body!!) }
+    }
+
+    @Test
+    fun editedPracticalOnlyInstructionsReachBothStepsAndExcludedPrimaryTextIsSkipped() = runBlocking {
+        val edited = store.magazines.save(magazine.copy(
+            prompt = "Escrever em Portugês (Brasil), no tom \"mais didático\". Só trazer ferramentas/sdk/skills/bibliotecas/MCP/serviços e afins.Não tenho interesse em palpites e artigos de opinião. O objetivo é encontrar ferramentas e serviços que otimizem meu trabalho no dia a dia. Ferramentas de trabalho novas com ou sem IA e que podem complementar ou se aproveitar ou não de IA. De preferência (mas não exclusivamente) feitos pela comunidade, gratuitos e de código aberto (não necessariamente todas essas coisas e dependendo mesmo que seja pago e código fechado pode ser interessante)",
+        ))
+        val opinion = notes.copy(title = "O futuro dos agentes", rawText = "Um editorial com previsões, sem ferramenta própria.")
+        val ai = Recorded(listOf(selection, toolItem, """{"skip":"Editorial de opinião, excluído pelas instruções do leitor."}"""))
+        val result = maker(ai).make(store.magazines.get(edited.id)!!, run(listOf(tool, opinion, bait)))
+        val edition = assertNotNull(result.edition)
+        assertEquals(listOf("agent-guard"), edition.items.map { it.id })
+        assertEquals(2, edition.leftOut.size)
+        assertTrue(edition.leftOut.any { it.title == opinion.title && it.reason.contains("Editorial de opinião") })
+        assertTrue(ai.prompts.all { edited.prompt in it })
+        assertTrue(ai.transport.sent.first().body!!.contains("eligibility rules"))
+        assertTrue(ai.transport.sent[1].body!!.contains("excluded content"))
+        assertEquals(edited.version, edition.recipeVersion)
+        assertEquals(1, store.editions.get(edition.key)!!.items.size)
     }
 
     @Test

@@ -39,7 +39,7 @@ data class UpdateCandidate(val record: RawRecord, val source: String)
 /**
  * What one source answered in one run (PLAN-collectors, "The worker's run").
  *
- * [returned] is what the script returned, [kept] the records that matched a keyword, [fresh] those of them that were
+ * [returned] is what the script returned, [kept] the records that passed the optional keyword filter, [fresh] those that were
  * not published before; [candidates] are the others. [refusedStatus] is 403 or 429 when the site refused automated
  * reading; [reason] says why a source failed or only partly answered.
  */

@@ -7,7 +7,7 @@ class OpenCodeClient(transport: HttpTransport, baseUrl: String, key: String) : M
         override suspend fun send(request: HttpRequest): HttpResponse = transport.send(HttpRequest(
             request.method,
             if (request.method == "GET") "$base/v1/models" else request.url,
-            request.headers + ("user-agent" to "primeira-dobra/0.3.0"),
+            request.headers + ("user-agent" to "primeira-dobra/0.3.1"),
             request.body,
         ))
     }, "$base/openai/v1", key)

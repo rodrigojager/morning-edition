@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 data class CollectorInput(
     /** The source address. The collector may fetch only from its domain (see [SourceDomain]). */
     val url: String,
-    /** The magazine's keywords. The engine keeps only records that contain one of them. */
+    /** Optional prefilter: keep records containing a keyword; an empty list keeps every valid record. */
     val keywords: List<String>,
     /** Where the last run stopped, as the collector returned it; null on the first run. */
     val cursor: String? = null,

@@ -12,7 +12,7 @@ object Seed {
     const val MAGAZINE_FILE = "magazine.json"
     const val EDITION_FILE = "edition.json"
 
-    fun magazine(json: String): Magazine = DobraJson.decodeFromString(Magazine.serializer(), json)
+    fun magazine(json: String): Magazine = StarterCollectors.attach(DobraJson.decodeFromString(Magazine.serializer(), json))
 
     fun edition(json: String): Edition = DobraJson.decodeFromString(Edition.serializer(), json)
 }

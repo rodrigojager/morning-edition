@@ -36,9 +36,9 @@ class CollectorWriter(
 ) {
     suspend fun write(brief: CollectorBrief, live: FetchTransport? = null): WriteOutcome {
         val attempts = ArrayList<Attempt>()
-        val prompt = CollectorPrompt.user(brief)
+        var fixture = SourceDiscovery.enrich(brief.fixture, live)
+        var prompt = CollectorPrompt.user(brief.copy(fixture = fixture))
         var user = prompt
-        var fixture = brief.fixture
         repeat(maxAttempts) {
             val answer = gateway.call(
                 AiJob.WRITE_COLLECTORS,
@@ -50,6 +50,7 @@ class CollectorWriter(
             } else {
                 val checked = acceptance.check(read.script, fixture, brief.keywords, live)
                 fixture = checked.fixture
+                prompt = CollectorPrompt.user(brief.copy(fixture = fixture))
                 if (checked.passed) {
                     attempts += Attempt(user, answer.text, emptyList())
                     return WriteOutcome.Accepted(read.script, read.keywords, checked, attempts)

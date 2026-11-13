@@ -1,23 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Launcher icon foreground: a page with its top corner folded (the "dobra"), inside the 66 dp safe zone. -->
+<!-- An open, folded magazine. The three paper planes stay inside the adaptive icon's safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- The page, its top right corner cut where it folds. -->
+    <path
+        android:fillColor="#FAF6EE"
+        android:pathData="M30,33 L51,42 L51,77 L30,66 Z" />
+    <path
+        android:fillColor="#DED1B9"
+        android:pathData="M55,43 L78,33 L78,66 L55,77 Z" />
+    <path
+        android:fillColor="#E34A32"
+        android:pathData="M55,43 L78,33 L66,54 L55,59 Z" />
     <path
         android:fillColor="#1B1A17"
-        android:pathData="M34,28 L62,28 L76,42 L76,80 L34,80 Z" />
-    <!-- The folded corner in the accent colour. -->
-    <path
-        android:fillColor="#C2311D"
-        android:pathData="M62,28 L62,42 L76,42 Z" />
-    <!-- Lines of text. -->
-    <path
-        android:fillColor="#FAF6EE"
-        android:pathData="M40,48 L70,48 L70,51 L40,51 Z M40,56 L70,56 L70,59 L40,59 Z M40,64 L70,64 L70,67 L40,67 Z M40,72 L60,72 L60,75 L40,75 Z" />
-    <path
-        android:fillColor="#FAF6EE"
-        android:pathData="M40,36 L56,36 L56,41 L40,41 Z" />
+        android:pathData="M35,44 L46,49 L46,52 L35,47 Z M35,52 L46,57 L46,60 L35,55 Z" />
 </vector>

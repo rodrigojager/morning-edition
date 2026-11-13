@@ -7,7 +7,7 @@
     <string name="library_new">Nova revista</string>
     <string name="library_empty_title">Nenhuma revista</string>
     <string name="library_empty_body">Crie uma revista para guardar a receita dela.</string>
-    <string name="library_open_page">Receita, fontes e edições</string>
+    <string name="library_open_page">Edições e nova edição</string>
 
     <string name="cadence_daily">Diária, às %1$dh</string>
     <string name="cadence_weekly">Semanal, às %1$dh</string>
@@ -80,6 +80,9 @@
     <string name="form_language">Idioma do texto</string>
     <string name="form_tone">Tom</string>
     <string name="form_prompt">Instruções livres para a IA</string>
+    <string name="prompt_edit">Editar instruções da próxima edição</string>
+    <string name="form_keywords_hint">Opcional. Deixe vazio para a IA avaliar todo o conteúdo coletado. Com palavras-chave, só chegam à IA os registros que contêm pelo menos uma delas.</string>
+    <string name="form_prompt_hint">Estas instruções orientam a seleção e a escrita das próximas edições. Diga o que incluir e o que excluir. Edições já guardadas não mudam.</string>
     <string name="form_cadence">Frequência</string>
     <string name="form_cadence_daily">Diária</string>
     <string name="form_cadence_weekly">Semanal</string>

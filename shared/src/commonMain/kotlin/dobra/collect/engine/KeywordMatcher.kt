@@ -3,7 +3,7 @@ package dobra.collect.engine
 /**
  * The magazine's keywords decide what a collector keeps (PLAN-collectors, "The collector contract"): a record is kept
  * when at least one keyword appears in its title or its text, word for word, ignoring case and accents. A keyword of
- * several words matches those words in a row. Nothing else decides what is kept.
+ * several words matches those words in a row. An empty list disables the engine's keyword prefilter.
  *
  * Folding is done here in common code with a fixed table (not the platform's Unicode normaliser), so the result is
  * the same on every platform.

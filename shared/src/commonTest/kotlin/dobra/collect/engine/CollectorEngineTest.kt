@@ -92,7 +92,7 @@ class CollectorEngineTest {
         assertEquals(listOf("https://www.example.org/a/1", "https://www.example.org/a/3"), run.kept.map { it.link })
         assertEquals(mapOf("segurança" to 2), run.perKeyword)
         val none = engine().run(typedCollector, CollectorInput(source, emptyList(), null))
-        assertTrue(none.kept.isEmpty(), "with no keyword nothing is kept")
+        assertEquals(none.wellFormed, none.kept, "without a keyword prefilter the AI can curate every valid record")
         assertEquals(3, none.wellFormed.size)
     }
 

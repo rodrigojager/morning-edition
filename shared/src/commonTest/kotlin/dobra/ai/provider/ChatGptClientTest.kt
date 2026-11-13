@@ -1,10 +1,64 @@
 package dobra.ai.provider
 
+import dobra.ai.collector.SourceSetup
+import dobra.make.MissingSetup
+import dobra.make.RewriteSetup
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.*
 import kotlin.test.*
 
 class ChatGptClientTest {
+    @Test
+    fun restoredChatGptChoicesPassBothGenerationChecksWithoutAnApiKey() = runTest {
+        val storage = MemoryBlobStorage()
+        val registry = ProviderRegistry(storage, ReverseCipher())
+        val provider = registry.addChatGpt()
+        val choice = JobChoice(provider.id, "account-model", Effort.MEDIUM)
+        registry.choose(AiJob.WRITE_COLLECTORS, choice)
+        registry.choose(AiJob.REWRITE, choice)
+        val restored = ProviderRegistry(storage, ReverseCipher())
+        assertNull(restored.key(provider.id))
+        assertNull(SourceSetup.missing(restored))
+        assertNull(RewriteSetup.missing(restored))
+        val transport = ReplayTransport(mutableListOf(reply(200, completed), reply(200, completed)))
+        val gateway = AiGateway(restored, transport, UsageLedger(storage),
+            oauthClient = { ChatGptClient(transport) { "synthetic-session" } })
+        for (job in listOf(AiJob.WRITE_COLLECTORS, AiJob.REWRITE)) {
+            gateway.call(job, AiRequest("ignored", "test"))
+            val body = Json.parseToJsonElement(transport.sent.last().body!!).jsonObject
+            assertEquals(choice.model, body.getValue("model").jsonPrimitive.content)
+            assertEquals("medium", body.getValue("reasoning").jsonObject.getValue("effort").jsonPrimitive.content)
+        }
+    }
+
+    @Test
+    fun generationChecksStillRequireEachJobsModelAndApiProvidersKeys() {
+        val storage = MemoryBlobStorage()
+        val registry = ProviderRegistry(storage, ReverseCipher())
+        val checks = listOf(AiJob.WRITE_COLLECTORS to SourceSetup::missing, AiJob.REWRITE to RewriteSetup::missing)
+        for ((_, check) in checks) assertEquals(MissingSetup.NO_PROVIDER, check(registry))
+        val plan = registry.addChatGpt()
+        registry.choose(AiJob.ANSWER, JobChoice(plan.id, "answer-model"))
+        for ((job, check) in checks) {
+            assertEquals(MissingSetup.NO_CHOICE, check(registry))
+            registry.selectProvider(job, plan.id)
+            assertEquals(MissingSetup.NO_MODEL, check(registry))
+            registry.selectModel(job, "account-model")
+            assertNull(check(registry))
+        }
+        for (kind in listOf(ProviderKind.OPENAI_STYLE, ProviderKind.ANTHROPIC, ProviderKind.OPENCODE)) {
+            val api = registry.add("API", kind, "https://example.test", "synthetic-key")
+            for ((job, check) in checks) {
+                registry.choose(job, JobChoice(api.id, "api-model"))
+                assertNull(check(registry))
+            }
+            storage.blobs.keys.filter { it.endsWith(".enc") }.toList().forEach { storage.delete(it) }
+            for ((_, check) in checks) assertEquals(MissingSetup.NO_KEY, check(registry))
+            registry.remove(api.id)
+            for ((_, check) in checks) assertEquals(MissingSetup.NO_CHOICE, check(registry))
+        }
+    }
+
     private val completed = """data: {"type":"response.completed","response":{"status":"completed","output":[{"type":"message","content":[{"type":"output_text","text":"An edition"}]}],"usage":{"input_tokens":21,"output_tokens":8}}}
 
 """
