@@ -25,7 +25,13 @@ object Turn3d {
     @Volatile
     private var probed: Boolean? = null
 
+    /** A screen test's answer in place of the device's (null: ask the device). Only for tests that never play a turn:
+     *  the GL view itself still cannot show without OpenGL. */
+    @Volatile
+    internal var assumeForTests: Boolean? = null
+
     fun available(context: Context): Boolean {
+        assumeForTests?.let { return it }
         if (broken) return false
         return probed ?: probe(context).also { probed = it }
     }

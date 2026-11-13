@@ -13,10 +13,7 @@ import kotlin.math.sin
  * back side up, on top of the rest. The line passes through ([fx] from the left edge, [fy] from mid-height, up
  * positive) with slant [a] in radians; with `a > 0` the bottom of the sheet is further along than the top.
  */
-data class CurlPose(val fx: Float, val fy: Float, val a: Float)
-
-/** A pose under a finger and how far the turn has gone ([progress], 0 to 1), which the release rule reads. */
-data class DragPose(val pose: CurlPose, val progress: Float)
+data class CurlPose(val fx: Float, val fy: Float, val a: Float) : TurnPose
 
 /** One point of the sheet in a pose: where it is (x from the left edge, y from mid-height, z towards the eye) and the
  *  light on its printed face and on its blank back. */
@@ -30,7 +27,9 @@ data class SheetShadow(val x: Float, val y: Float, val rotation: Float, val widt
  * prototype's `turn.js` (`curlAt`, `poseCurl`, `pastLine`, `curlDrag`, `dragEnd`). Pure functions: they return vertex
  * positions and shades, the drawing is the platform's.
  */
-class SheetCurl(val width: Float, val height: Float) {
+class SheetCurl(val width: Float, val height: Float) : TurnMotion<CurlPose> {
+    override val playMs: Int get() = TurnSpec.PLAY_MS
+
     /** The radius of the roll. */
     val radius: Float = (width * 0.085f).coerceIn(20f, 120f)
 
@@ -42,6 +41,8 @@ class SheetCurl(val width: Float, val height: Float) {
     /** The pose a turn played by itself goes through at [t] (0: the sheet lies flat, 1: it has left the screen); the
      *  bottom corner lifts first. */
     fun curlAt(t: Float): CurlPose = CurlPose(width - t * span, 0f, 0.2f * sin(PI.toFloat() * t))
+
+    override fun at(t: Float): CurlPose = curlAt(t)
 
     /** Where the point ([x] from the left edge, [y] from mid-height) of the flat sheet is in pose [s], and its light. */
     fun point(s: CurlPose, x: Float, y: Float): SheetPoint {
@@ -133,7 +134,7 @@ class SheetCurl(val width: Float, val height: Float) {
      * follows it; the slant comes from the direction of the drag and from how high or low the sheet was taken.
      * Bringing a sheet back, the roll itself follows the finger.
      */
-    fun drag(dir: Int, y: Float, mx: Float, my: Float): DragPose {
+    override fun drag(dir: Int, y: Float, mx: Float, my: Float): DragPose<CurlPose> {
         val h = height / 2f
         val m = max(0f, mx)
         val grow = min(1f, m / (0.35f * width))
@@ -149,17 +150,17 @@ class SheetCurl(val width: Float, val height: Float) {
     }
 
     /** Where a released turn of direction [dir] lands: flat on the screen, or gone past the left edge. */
-    fun restingPose(dir: Int, commit: Boolean): CurlPose {
+    override fun restingPose(dir: Int, commit: Boolean): CurlPose {
         val end = if (commit == dir > 0) 1f else 0f
         return curlAt(end)
     }
 
     /** How long the sheet takes from pose [from] to the resting pose [to] once let go, in milliseconds. */
-    fun settleMillis(from: CurlPose, to: CurlPose): Int = (160f + 460f * abs(to.fx - from.fx) / span).toInt()
+    override fun settleMillis(from: CurlPose, to: CurlPose): Int = (160f + 460f * abs(to.fx - from.fx) / span).toInt()
 
     /** The pose at [k] (0 to 1, eased) of the way from the pose under the finger to the resting pose: straight along,
      *  losing the slant. */
-    fun settle(from: CurlPose, to: CurlPose, k: Float): CurlPose =
+    override fun settle(from: CurlPose, to: CurlPose, k: Float): CurlPose =
         CurlPose(from.fx + (to.fx - from.fx) * k, from.fy, from.a * (1f - k))
 
     companion object {

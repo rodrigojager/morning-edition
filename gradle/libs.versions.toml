@@ -24,6 +24,8 @@ kotlinx-coroutines = "1.11.0"
 androidx-sqlite = "2.5.2"
 robolectric = "4.17"
 robolectric-android-all-sdk35 = "15-robolectric-13954326-i7"
+# Jetpack WindowManager (the device's fold). 1.5.x declares minCompileSdk 34.
+androidx-window = "1.5.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidx-core" }
@@ -44,6 +46,8 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 junit = { module = "junit:junit", version.ref = "junit" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-test-ext-junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+androidx-window = { module = "androidx.window:window", version.ref = "androidx-window" }
+androidx-window-testing = { module = "androidx.window:window-testing", version.ref = "androidx-window" }
 robolectric-android-all-sdk35 = { module = "org.robolectric:android-all-instrumented", version.ref = "robolectric-android-all-sdk35" }
 
 [plugins]

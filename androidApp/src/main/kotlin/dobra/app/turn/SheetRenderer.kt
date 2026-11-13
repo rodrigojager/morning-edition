@@ -4,9 +4,15 @@ import android.graphics.Bitmap
 import android.opengl.GLES20
 import android.opengl.GLUtils
 import android.opengl.Matrix
+import dobra.reader.turn.BookPose
+import dobra.reader.turn.BookStrip
+import dobra.reader.turn.BookTurn
 import dobra.reader.turn.CurlPose
 import dobra.reader.turn.SheetCurl
 import dobra.reader.turn.SheetMesh
+import dobra.reader.turn.SheetShadow
+import dobra.reader.turn.TurnPose
+import dobra.reader.turn.TurnSpec
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -15,23 +21,32 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
 
+/** The two ways a page turns: the single sheet rolling off the screen, or the book's right page swinging over the fold. */
+enum class TurnKind { SHEET, BOOK }
+
 /**
- * What one turn draws: the picture left under the sheet, the picture printed on the sheet, the colour of the sheet's
- * blank back, and the size of the page in density-independent pixels (the unit of the geometry).
+ * What one turn draws. A turn is always "a to b", played forwards or backwards (see [turnFaces]): [printed] is the
+ * picture of screen a, printed on the turning sheet's face; [reached] the picture of screen b. The single sheet lies on
+ * [reached] and has a blank back of colour [paper]. The book's page shows on its back the left page of [reached]; under
+ * it lie the left page of [printed] and the right page of [reached]. Sizes are density-independent pixels (the unit
+ * of the geometry); [hingeDp] is where the book's fold is, from the left edge.
  */
 internal class TurnScene(
-    val under: Bitmap,
-    val sheet: Bitmap,
+    val kind: TurnKind,
+    val printed: Bitmap,
+    val reached: Bitmap,
     val paper: Int,
     val widthDp: Float,
     val heightDp: Float,
+    val hingeDp: Float = widthDp / 2f,
 )
 
 /**
- * Draws the single sheet turn with OpenGL ES 2, as the prototype's Three.js scene does: a perspective camera of 14
- * degrees looking at the page, the picture under the sheet, the soft shadow, and the sheet as a mesh whose printed
- * face shows the page picture and whose back shows blank paper, each face with its own light. Lives on the GL thread,
- * with a current context.
+ * Draws the page turn with OpenGL ES 2, as the prototype's Three.js scene does: a perspective camera of 14 degrees
+ * looking at the page, the pictures under the turning page, the soft shadow, and the turning page. The single sheet is
+ * a grid whose printed face shows its picture and whose back shows blank paper, each face with its own light; the
+ * book's page is a strip hinged on the fold with a page picture on each face. Lives on the GL thread, with a current
+ * context.
  */
 internal class SheetRenderer {
     private var program = 0
@@ -45,6 +60,8 @@ internal class SheetRenderer {
     private val textures = IntArray(2)
     private var paper = FloatArray(4)
     private var curl: SheetCurl? = null
+    private var book: BookTurn? = null
+    private var strip: BookStrip? = null
     private val mesh = SheetMesh()
     private val mvp = FloatArray(16)
     private var viewW = 1
@@ -59,6 +76,15 @@ internal class SheetRenderer {
     private val quadPos = floats(12)
     private val quadUv = floats(8)
     private val quadShade = floats(4).apply { put(floatArrayOf(1f, 1f, 1f, 1f)).position(0) }
+
+    // the book's strip: its size is fixed, its texture coordinates depend on where the fold is
+    private val stripVertices = (TurnSpec.BOOK_SEGMENTS + 1) * 2
+    private val stripPos = floats(stripVertices * 3)
+    private val stripShade = floats(stripVertices)
+    private val stripFrontUv = floats(stripVertices * 2)
+    private val stripBackUv = floats(stripVertices * 2)
+    private val stripIdx: ShortBuffer = ByteBuffer.allocateDirect(TurnSpec.BOOK_SEGMENTS * 6 * 2).order(ByteOrder.nativeOrder())
+        .asShortBuffer()
 
     /** Compiles the program once per context. Throws when the driver refuses it. */
     fun init() {
@@ -83,13 +109,29 @@ internal class SheetRenderer {
 
     /** Takes the pictures and the size of a new turn; the bitmaps are uploaded and recycled. */
     fun load(scene: TurnScene) {
-        upload(textures[0], scene.under)
-        upload(textures[1], scene.sheet)
-        scene.under.recycle()
-        scene.sheet.recycle()
+        upload(textures[REACHED], scene.reached)
+        upload(textures[PRINTED], scene.printed)
+        scene.reached.recycle()
+        scene.printed.recycle()
         val c = scene.paper
         paper = floatArrayOf(((c shr 16) and 0xff) / 255f, ((c shr 8) and 0xff) / 255f, (c and 0xff) / 255f, 1f)
-        curl = SheetCurl(scene.widthDp, scene.heightDp)
+        if (scene.kind == TurnKind.BOOK) {
+            curl = null
+            val b = BookTurn(scene.widthDp, scene.heightDp, scene.hingeDp)
+            val s = b.strip()
+            book = b
+            strip = s
+            stripFrontUv.position(0)
+            stripFrontUv.put(s.frontUv).position(0)
+            stripBackUv.position(0)
+            stripBackUv.put(s.backUv).position(0)
+            stripIdx.position(0)
+            stripIdx.put(s.indices).position(0)
+        } else {
+            book = null
+            strip = null
+            curl = SheetCurl(scene.widthDp, scene.heightDp)
+        }
         camera(scene.widthDp, scene.heightDp)
     }
 
@@ -98,12 +140,15 @@ internal class SheetRenderer {
         viewH = height.coerceAtLeast(1)
     }
 
-    fun draw(pose: CurlPose) {
-        val curl = curl ?: return
-        val bw = curl.width
-        val bh = curl.height
-        curl.pose(pose, mesh)
+    fun draw(pose: TurnPose) {
+        when (pose) {
+            is CurlPose -> drawCurl(pose)
+            is BookPose -> drawBook(pose)
+        }
+    }
 
+    /** Clears to the paper and readies the program: everything is drawn with the same camera and texture unit. */
+    private fun begin() {
         GLES20.glViewport(0, 0, viewW, viewH)
         GLES20.glClearColor(paper[0], paper[1], paper[2], 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
@@ -111,27 +156,91 @@ internal class SheetRenderer {
         GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
         GLES20.glUniform1i(uTex, 0)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-
-        // the page under the sheet
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
         GLES20.glDisable(GLES20.GL_CULL_FACE)
         GLES20.glDisable(GLES20.GL_BLEND)
+    }
+
+    /** The soft shadow of the turning page, on the pictures under it ([bw]: the page width, x is from its left). */
+    private fun shadow(s: SheetShadow, bw: Float) {
+        if (s.opacity <= 0f) return
+        GLES20.glEnable(GLES20.GL_BLEND)
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        quad(s.x - bw / 2 - s.width / 2, s.y - s.height / 2, -0.5f, s.width, s.height, s.rotation, s.x - bw / 2, s.y)
+        GLES20.glUniform1f(uMode, MODE_SHADOW)
+        GLES20.glUniform4f(uColor, 0f, 0f, 0f, s.opacity)
+        drawQuad()
+        GLES20.glDisable(GLES20.GL_BLEND)
+    }
+
+    /** Depth on and the faces told apart, counter-clockwise being the printed face. */
+    private fun sheetState() {
+        GLES20.glEnable(GLES20.GL_DEPTH_TEST)
+        GLES20.glDepthFunc(GLES20.GL_LEQUAL)
+        GLES20.glEnable(GLES20.GL_CULL_FACE)
+        GLES20.glFrontFace(GLES20.GL_CCW)
+    }
+
+    /** The book: the left page of a and the right page of b under the strip, its shadow, then the strip with the
+     *  right page of a on its face and the left page of b on its back. */
+    private fun drawBook(pose: BookPose) {
+        val book = book ?: return
+        val strip = strip ?: return
+        val bw = book.width
+        val bh = book.height
+        val hinge = book.hinge
+        book.pose(pose, strip)
+        begin()
+
+        GLES20.glUniform1f(uMode, MODE_TEXTURE)
+        quad(-bw / 2, -bh / 2, -1f, hinge, bh, 0f, u0 = 0f, u1 = hinge / bw)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[PRINTED])
+        drawQuad()
+        quad(hinge - bw / 2, -bh / 2, -1f, bw - hinge, bh, 0f, u0 = hinge / bw, u1 = 1f)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[REACHED])
+        drawQuad()
+
+        shadow(strip.shadow, bw)
+
+        val p = strip.positions
+        for (n in 0 until strip.vertexCount) p[n * 3] -= bw / 2
+        stripPos.position(0)
+        stripPos.put(p).position(0)
+        stripShade.position(0)
+        stripShade.put(strip.shade).position(0)
+        sheetState()
+        GLES20.glUniform1f(uMode, MODE_TEXTURE)
+
+        GLES20.glCullFace(GLES20.GL_BACK)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[PRINTED])
+        drawStrip(stripFrontUv)
+
+        GLES20.glCullFace(GLES20.GL_FRONT)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[REACHED])
+        drawStrip(stripBackUv)
+    }
+
+    private fun drawStrip(uvs: FloatBuffer) {
+        attributes(stripPos, uvs, stripShade)
+        stripIdx.position(0)
+        GLES20.glDrawElements(GLES20.GL_TRIANGLES, TurnSpec.BOOK_SEGMENTS * 6, GLES20.GL_UNSIGNED_SHORT, stripIdx)
+    }
+
+    private fun drawCurl(pose: CurlPose) {
+        val curl = curl ?: return
+        val bw = curl.width
+        val bh = curl.height
+        curl.pose(pose, mesh)
+        begin()
+
+        // the page under the sheet
         quad(-bw / 2, -bh / 2, -1f, bw, bh, 0f)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0])
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[REACHED])
         GLES20.glUniform1f(uMode, MODE_TEXTURE)
         drawQuad()
 
         // the soft shadow of the turned part, under the sheet
-        val s = mesh.shadow
-        if (s.opacity > 0f) {
-            GLES20.glEnable(GLES20.GL_BLEND)
-            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-            quad(s.x - bw / 2 - s.width / 2, s.y - s.height / 2, -0.5f, s.width, s.height, s.rotation, s.x - bw / 2, s.y)
-            GLES20.glUniform1f(uMode, MODE_SHADOW)
-            GLES20.glUniform4f(uColor, 0f, 0f, 0f, s.opacity)
-            drawQuad()
-            GLES20.glDisable(GLES20.GL_BLEND)
-        }
+        shadow(mesh.shadow, bw)
 
         // the sheet: the printed face, then the blank back, the depth buffer sorting out what is on top
         val p = mesh.positions
@@ -139,13 +248,10 @@ internal class SheetRenderer {
         pos.put(p).position(0)
         front.put(mesh.front).position(0)
         back.put(mesh.back).position(0)
-        GLES20.glEnable(GLES20.GL_DEPTH_TEST)
-        GLES20.glDepthFunc(GLES20.GL_LEQUAL)
-        GLES20.glEnable(GLES20.GL_CULL_FACE)
-        GLES20.glFrontFace(GLES20.GL_CCW)
+        sheetState()
 
         GLES20.glCullFace(GLES20.GL_BACK)
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[1])
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[PRINTED])
         GLES20.glUniform1f(uMode, MODE_TEXTURE)
         drawSheet(front)
 
@@ -167,14 +273,20 @@ internal class SheetRenderer {
         val dist = bh / (2f * tan(Math.toRadians(FOV / 2.0)).toFloat())
         val proj = FloatArray(16)
         val view = FloatArray(16)
-        // near and far hug the scene (it spans z from -1 to twice the roll's radius) so the depth buffer stays precise
+        // near and far hug the scene so the depth buffer stays precise: it spans z from -1 to twice the roll's radius,
+        // or to the book's page width when it stands over the fold (well inside unless the screen is 4 times wider
+        // than tall)
         Matrix.perspectiveM(proj, 0, FOV, bw / bh, dist / 2f, dist * 2f)
         Matrix.setLookAtM(view, 0, 0f, 0f, dist, 0f, 0f, 0f, 0f, 1f, 0f)
         Matrix.multiplyMM(mvp, 0, proj, 0, view, 0)
     }
 
-    /** A rectangle [w] by [h] from ([x], [y]) at depth [z], turned by [angle] around ([cx], [cy]). */
-    private fun quad(x: Float, y: Float, z: Float, w: Float, h: Float, angle: Float, cx: Float = 0f, cy: Float = 0f) {
+    /** A rectangle [w] by [h] from ([x], [y]) at depth [z], turned by [angle] around ([cx], [cy]), showing the picture
+     *  from [u0] to [u1] across. */
+    private fun quad(
+        x: Float, y: Float, z: Float, w: Float, h: Float, angle: Float,
+        cx: Float = 0f, cy: Float = 0f, u0: Float = 0f, u1: Float = 1f,
+    ) {
         val c = cos(angle)
         val s = sin(angle)
         val corners = floatArrayOf(x, y, x + w, y, x, y + h, x + w, y + h)
@@ -187,7 +299,7 @@ internal class SheetRenderer {
         quadPos.position(0)
         // v from the top of the picture: the bottom corners take v = 1
         quadUv.position(0)
-        quadUv.put(floatArrayOf(0f, 1f, 1f, 1f, 0f, 0f, 1f, 0f)).position(0)
+        quadUv.put(floatArrayOf(u0, 1f, u1, 1f, u0, 0f, u1, 0f)).position(0)
     }
 
     private fun drawQuad() {
@@ -236,6 +348,8 @@ internal class SheetRenderer {
 
     private companion object {
         const val FOV = 14f
+        const val REACHED = 0
+        const val PRINTED = 1
         const val MODE_TEXTURE = 0f
         const val MODE_COLOR = 1f
         const val MODE_SHADOW = 2f

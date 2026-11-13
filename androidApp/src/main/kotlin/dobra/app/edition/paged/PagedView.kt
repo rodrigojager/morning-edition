@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,6 +40,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dobra.app.shell.LocalReaderColors
 import dobra.app.turn.DragInput
+import dobra.app.turn.PageTurnKindKey
 import dobra.app.turn.PictureBox
 import dobra.app.turn.SheetTurn
 import dobra.app.turn.SheetTurnOverlay
@@ -76,17 +77,18 @@ internal data class ScreenKey(val layout: Int, val screen: Int)
 private data class Shown(val key: ScreenKey, val slide: Boolean)
 
 /**
- * The pages of one screen at a time. A change of one screen turns the sheet in 3D when [turn] is given (single sheet,
- * a device that can draw it) and slides otherwise; with [instant] the screens change at once. A horizontal drag
- * turns the sheet under the finger, or, without [turn], is a swipe that asks for the next (to the left) or the
- * previous screen (to the right). [onStep] moves the screen by one.
+ * The pages of one screen at a time, placed by [frame]. A change of one screen turns the page in 3D when [turn] is
+ * given (the rolled sheet in single sheet, the page hinged on the spine in the book, on a device that can draw it) and
+ * slides otherwise; with [instant] the screens change at once. A horizontal drag turns the page under the finger, or,
+ * without [turn], is a swipe that asks for the next (to the left) or the previous screen (to the right). [onStep]
+ * moves the screen by one.
  */
 @Composable
 internal fun PagedView(
     chapters: List<ChapterSpec>,
     pagination: Pagination,
     perScreen: Int,
-    pageWidth: Int,
+    frame: BookFrame,
     target: ScreenKey,
     instant: Boolean,
     turn: SheetTurn<ScreenKey>?,
@@ -101,7 +103,7 @@ internal fun PagedView(
     var boxSize by remember { mutableStateOf(IntSize.Zero) }
     val screens = pagination.screenCount(perScreen)
     val page = {
-        TurnPage(boxSize.width / density.density, boxSize.height / density.density, paper)
+        TurnPage(boxSize.width / density.density, boxSize.height / density.density, paper, frame.spineCenter / density.density)
     }
 
     var shown by remember { mutableStateOf(Shown(target, slide = false)) }
@@ -173,10 +175,11 @@ internal fun PagedView(
         }
     }
     Box(
-        modifier.fillMaxSize().clipToBounds().onSizeChanged { boxSize = it }.then(gesture).testTag("pages"),
+        modifier.fillMaxSize().clipToBounds().onSizeChanged { boxSize = it }.then(gesture).testTag("pages")
+            .semantics { if (turn != null) this[PageTurnKindKey] = turn.kind },
     ) {
         if (instant) {
-            ScreenView(chapters, pagination, perScreen, target.screen, pageWidth)
+            ScreenView(chapters, pagination, perScreen, target.screen, frame)
         } else {
             // the screen a turn is about to reach, composed out of sight for its picture
             val preparing = turn?.preparing
@@ -184,7 +187,7 @@ internal fun PagedView(
                 key(preparing) {
                     Box(Modifier.fillMaxSize().clearAndSetSemantics { }) {
                         PictureBox(preparing, turn.pictures, shown = false, Modifier.fillMaxSize()) {
-                            ScreenView(chapters, pagination, perScreen, preparing.screen, pageWidth)
+                            ScreenView(chapters, pagination, perScreen, preparing.screen, frame)
                         }
                     }
                 }
@@ -206,7 +209,7 @@ internal fun PagedView(
                 label = "page slide",
             ) { s ->
                 PictureBox(s.key, turn?.pictures, shown = true, Modifier.fillMaxSize()) {
-                    ScreenView(chapters, pagination, perScreen, s.key.screen, pageWidth)
+                    ScreenView(chapters, pagination, perScreen, s.key.screen, frame)
                 }
             }
             turn?.let { SheetTurnOverlay(it) }
@@ -222,32 +225,32 @@ private val DragStart: Dp = 12.dp
 /** How long a swipe (a drag without the 3D turn) must be to change the screen. */
 private val SwipeLength: Dp = 48.dp
 
-/** One screen: a single page, or two pages with the spine between them. */
+/** One screen: a single page, or two pages with the spine between them, where [frame] puts them. */
 @Composable
-private fun ScreenView(chapters: List<ChapterSpec>, pagination: Pagination, perScreen: Int, screen: Int, pageWidth: Int) {
+private fun ScreenView(chapters: List<ChapterSpec>, pagination: Pagination, perScreen: Int, screen: Int, frame: BookFrame) {
     val colors = LocalReaderColors.current
     val first = screen * perScreen
-    Row(Modifier.fillMaxSize().background(colors.page).testTag("screen-$screen")) {
+    Box(Modifier.fillMaxSize().background(colors.page).testTag("screen-$screen")) {
         if (perScreen == 1) {
-            Box(Modifier.widthPx(pageWidth)) {
+            Box(Modifier.placePx(0, frame.pageWidth)) {
                 pagination.pages.getOrNull(first)?.let { PageView(it, chapters, "page") }
             }
         } else {
-            Box(Modifier.widthPx(pageWidth)) {
+            Box(Modifier.placePx(frame.leftStart, frame.pageWidth)) {
                 pagination.pages.getOrNull(first)?.let { PageView(it, chapters, "page-left") }
             }
-            Spine(Modifier.weight(1f))
-            Box(Modifier.widthPx(pageWidth)) {
+            Spine(Modifier.placePx(frame.spineStart, frame.spineWidth))
+            Box(Modifier.placePx(frame.rightStart, frame.pageWidth)) {
                 pagination.pages.getOrNull(first + 1)?.let { PageView(it, chapters, "page-right") }
             }
         }
     }
 }
 
-/** Exactly [px] wide and as tall as allowed, so a page has the width it was measured at. */
-private fun Modifier.widthPx(px: Int): Modifier = layout { measurable, constraints ->
-    val placeable = measurable.measure(Constraints.fixed(px, constraints.maxHeight))
-    layout(px, constraints.maxHeight) { placeable.place(0, 0) }
+/** Exactly [width] pixels wide from [x] and as tall as allowed, so a page has the width it was measured at. */
+private fun Modifier.placePx(x: Int, width: Int): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(Constraints.fixed(width, constraints.maxHeight))
+    layout(width, constraints.maxHeight) { placeable.place(x, 0) }
 }
 
 @Composable

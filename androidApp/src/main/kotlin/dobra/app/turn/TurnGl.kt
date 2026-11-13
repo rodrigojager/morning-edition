@@ -9,7 +9,7 @@ import android.opengl.EGLSurface
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
-import dobra.reader.turn.CurlPose
+import dobra.reader.turn.TurnPose
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -33,7 +33,7 @@ internal class TurnGl {
     private var renderer: SheetRenderer? = null
     private var failed = false
 
-    private val latest = AtomicReference<CurlPose?>(null)
+    private val latest = AtomicReference<TurnPose?>(null)
     private val scheduled = AtomicBoolean(false)
     private val frame = Runnable {
         scheduled.set(false)
@@ -44,7 +44,7 @@ internal class TurnGl {
      * Starts drawing into [texture] ([width] by [height] pixels) with the pictures of [scene], showing [first]. Calls
      * [onResult] on the main thread with false when the context, the surface or the pictures could not be set up.
      */
-    fun attach(texture: SurfaceTexture, width: Int, height: Int, scene: TurnScene, first: CurlPose, onResult: (Boolean) -> Unit) {
+    fun attach(texture: SurfaceTexture, width: Int, height: Int, scene: TurnScene, first: TurnPose, onResult: (Boolean) -> Unit) {
         handler.post {
             val ok = try {
                 ensureContext()
@@ -72,7 +72,7 @@ internal class TurnGl {
     }
 
     /** Draws [pose] on the next turn of the GL thread; poses that arrive meanwhile replace it. */
-    fun pose(pose: CurlPose) {
+    fun pose(pose: TurnPose) {
         latest.set(pose)
         if (scheduled.compareAndSet(false, true)) handler.post(frame)
     }
@@ -114,7 +114,7 @@ internal class TurnGl {
         thread.quitSafely()
     }
 
-    private fun render(pose: CurlPose) {
+    private fun render(pose: TurnPose) {
         if (failed || surface == EGL14.EGL_NO_SURFACE) return
         try {
             renderer?.draw(pose)

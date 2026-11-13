@@ -17,15 +17,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.viewinterop.AndroidView
-import dobra.reader.turn.CurlPose
+import androidx.compose.ui.semantics.SemanticsPropertyKey
+import dobra.reader.turn.BookTurn
 import dobra.reader.turn.ReleaseSpeed
 import dobra.reader.turn.SheetCurl
+import dobra.reader.turn.TurnMotion
+import dobra.reader.turn.TurnPose
 import dobra.reader.turn.TurnSpec
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** The page the turn plays on: its size in density-independent pixels and the colour of its paper. */
-internal class TurnPage(val widthDp: Float, val heightDp: Float, val paper: Int)
+/** The page the turn plays on: its size in density-independent pixels, the colour of its paper and, for the book,
+ *  where the fold is from the left edge. */
+internal class TurnPage(val widthDp: Float, val heightDp: Float, val paper: Int, val hingeDp: Float = widthDp / 2f)
+
+/**
+ * Which screen is printed on the turning page and which one it reaches, for a turn from [from] to [to] in direction
+ * [dir]: a turn is always "a to b", played forwards or backwards. Turning forward the page leaving is printed on the
+ * sheet and the next one is reached (in the book, the next spread's left page is on the back of the turning page);
+ * bringing a page back it is the other way round.
+ */
+internal fun <K> turnFaces(from: K, to: K, dir: Int): Pair<K, K> = if (dir > 0) from to to else to to from
+
+/** On the pages' node: which 3D turn the pages use (absent when they slide). */
+val PageTurnKindKey = SemanticsPropertyKey<TurnKind>("PageTurnKind")
 
 /** How a finger let go: its speed in the direction of the turn (dp per ms), or the gesture was aborted. */
 internal class Release(val velocity: Float, val cancelled: Boolean)
@@ -66,15 +81,16 @@ internal class DragInput(val dir: Int, val yShare: Float, private val density: F
 }
 
 /**
- * The 3D turn of the single sheet over screens identified by keys [K]. [play] turns a sheet by itself (a button),
- * [drag] under a finger. Both make the pictures of the two screens, show the GL view over the pager, change the
- * screen under it once the view shows the first frame, and take the view away once the screen under it matches the
- * last frame. When something is missing (a picture, the GL view) they report it and the caller slides.
+ * The 3D page turn over screens identified by keys [K]: the single sheet rolling off ([TurnKind.SHEET]) or the book's
+ * page hinged on the fold ([TurnKind.BOOK]). [play] turns a page by itself (a button), [drag] under a finger. Both make
+ * the pictures of the two screens, show the GL view over the pager, change the screen under it once the view shows the
+ * first frame, and take the view away once the screen under it matches the last frame. When something is missing (a
+ * picture, the GL view) they report it and the caller slides.
  *
  * The screen changes the turn makes itself (a drag) are announced with a claim, so the caller does not play them again.
  */
 @Stable
-internal class SheetTurn<K>(private val density: Float) {
+internal class SheetTurn<K>(private val density: Float, val kind: TurnKind = TurnKind.SHEET) {
     val pictures = PagePictures<K>()
 
     /** A turn is running: further steps wait until it ends. */
@@ -103,15 +119,29 @@ internal class SheetTurn<K>(private val density: Float) {
 
     /** Turns from screen [from] to [to] in direction [dir] by itself; [swap] changes the screen under the turn.
      *  False when the turn could not be shown (the caller slides). */
-    suspend fun play(from: K, to: K, dir: Int, page: TurnPage, swap: () -> Unit): Boolean {
+    suspend fun play(from: K, to: K, dir: Int, page: TurnPage, swap: () -> Unit): Boolean = when (kind) {
+        TurnKind.SHEET -> play(SheetCurl(page.widthDp, page.heightDp), from, to, dir, page, swap)
+        TurnKind.BOOK -> play(BookTurn(page.widthDp, page.heightDp, page.hingeDp), from, to, dir, page, swap)
+    }
+
+    /**
+     * Turns under a finger from [from] to [to]: the page follows [input] until it is let go, then completes or goes
+     * back by the release rule. [step] moves the screen by one in a direction. Without the 3D view the drag is a swipe:
+     * once [swipePx] long when let go, it steps with a slide.
+     */
+    suspend fun drag(from: K, to: K, input: DragInput, page: TurnPage, swipePx: Float, step: (Int) -> Unit) = when (kind) {
+        TurnKind.SHEET -> drag(SheetCurl(page.widthDp, page.heightDp), from, to, input, page, swipePx, step)
+        TurnKind.BOOK -> drag(BookTurn(page.widthDp, page.heightDp, page.hingeDp), from, to, input, page, swipePx, step)
+    }
+
+    private suspend fun <P : TurnPose> play(motion: TurnMotion<P>, from: K, to: K, dir: Int, page: TurnPage, swap: () -> Unit): Boolean {
         if (busy) return false
         busy = true
         try {
-            val curl = SheetCurl(page.widthDp, page.heightDp)
             val t0 = if (dir > 0) 0f else 1f
-            val gl = open(from, to, dir, page, curl.curlAt(t0)) ?: return false
+            val gl = open(from, to, dir, page, motion.at(t0)) ?: return false
             swap()
-            animate(TurnSpec.PLAY_MS) { k -> gl.pose(curl.curlAt(t0 + (1f - 2f * t0) * SheetCurl.easeInOut(k))) }
+            animate(motion.playMs) { k -> gl.pose(motion.at(t0 + (1f - 2f * t0) * SheetCurl.easeInOut(k))) }
             frames(2)
             return true
         } finally {
@@ -119,18 +149,14 @@ internal class SheetTurn<K>(private val density: Float) {
         }
     }
 
-    /**
-     * Turns under a finger from [from] to [to]: the sheet follows [input] until it is let go, then completes or goes
-     * back by the release rule. [step] moves the screen by one in a direction. Without the 3D view the drag is a swipe:
-     * once [swipePx] long when let go, it steps with a slide.
-     */
-    suspend fun drag(from: K, to: K, input: DragInput, page: TurnPage, swipePx: Float, step: (Int) -> Unit) {
+    private suspend fun <P : TurnPose> drag(
+        motion: TurnMotion<P>, from: K, to: K, input: DragInput, page: TurnPage, swipePx: Float, step: (Int) -> Unit,
+    ) {
         busy = true
         try {
             val dir = input.dir
-            val curl = SheetCurl(page.widthDp, page.heightDp)
             val y = (0.5f - input.yShare) * page.heightDp
-            val gl = open(from, to, dir, page, curl.curlAt(if (dir > 0) 0f else 1f))
+            val gl = open(from, to, dir, page, motion.at(if (dir > 0) 0f else 1f))
             if (gl == null) {
                 val r = input.released.await()
                 if (!r.cancelled && input.travelPx >= swipePx) {
@@ -141,18 +167,18 @@ internal class SheetTurn<K>(private val density: Float) {
             }
             claim = to to false
             step(dir)
-            var last = curl.drag(dir, y, input.along, input.down)
+            var last = motion.drag(dir, y, input.along, input.down)
             gl.pose(last.pose)
             while (!input.released.isCompleted) {
                 withFrameNanos { }
-                last = curl.drag(dir, y, input.along, input.down)
+                last = motion.drag(dir, y, input.along, input.down)
                 gl.pose(last.pose)
             }
             val r = input.released.await()
             val commit = SheetCurl.commits(last.progress, r.velocity, r.cancelled)
-            val rest = curl.restingPose(dir, commit)
+            val rest = motion.restingPose(dir, commit)
             val held = last.pose
-            animate(curl.settleMillis(held, rest)) { k -> gl.pose(curl.settle(held, rest, SheetCurl.easeOut(k))) }
+            animate(motion.settleMillis(held, rest)) { k -> gl.pose(motion.settle(held, rest, SheetCurl.easeOut(k))) }
             if (!commit) {
                 claim = from to false
                 step(-dir)
@@ -174,7 +200,7 @@ internal class SheetTurn<K>(private val density: Float) {
     }
 
     /** Makes the two pictures and shows the GL view at [first]; null when either step failed. */
-    private suspend fun open(from: K, to: K, dir: Int, page: TurnPage, first: CurlPose): TurnGl? {
+    private suspend fun open(from: K, to: K, dir: Int, page: TurnPage, first: TurnPose): TurnGl? {
         val scale = TurnSpec.pictureScale(density)
         preparing = to
         val fromPicture = pictures.take(from, scale) ?: return null
@@ -184,9 +210,11 @@ internal class SheetTurn<K>(private val density: Float) {
             fromPicture.recycle()
             return null
         }
-        // the turn is always "a to b", played forwards or backwards: a is printed on the sheet, b lies under it
-        val scene = if (dir > 0) TurnScene(toPicture, fromPicture, page.paper, page.widthDp, page.heightDp)
-        else TurnScene(fromPicture, toPicture, page.paper, page.widthDp, page.heightDp)
+        val pictureOf = mapOf(from to fromPicture, to to toPicture)
+        val (printed, reached) = turnFaces(from, to, dir)
+        val scene = TurnScene(
+            kind, pictureOf.getValue(printed), pictureOf.getValue(reached), page.paper, page.widthDp, page.heightDp, page.hingeDp,
+        )
         val gl = gl ?: TurnGl().also { gl = it }
         val shown = CompletableDeferred<Boolean>()
         overlay = Overlay(gl, scene, first, shown)
@@ -219,7 +247,7 @@ internal class SheetTurn<K>(private val density: Float) {
     }
 
     /** One showing of the GL view: it reports through [shown] once its first frame arrived (or that it failed). */
-    internal class Overlay(val gl: TurnGl, val scene: TurnScene, val first: CurlPose, val shown: CompletableDeferred<Boolean>) {
+    internal class Overlay(val gl: TurnGl, val scene: TurnScene, val first: TurnPose, val shown: CompletableDeferred<Boolean>) {
         private var attached = false
         private var frameSeen = false
 
@@ -255,16 +283,16 @@ internal class SheetTurn<K>(private val density: Float) {
 }
 
 /**
- * The turn of the single sheet when this device can draw it in 3D and the reader allows it ([LocalPageTurn3d]); null
- * otherwise, and the pages slide. [enabled] is false outside the single sheet or with animations off.
+ * The 3D page turn of [kind] when this device can draw it and the reader allows it ([LocalPageTurn3d]); null
+ * otherwise, and the pages slide. [enabled] is false with animations off.
  */
 @Composable
-internal fun <K> rememberSheetTurn(enabled: Boolean): SheetTurn<K>? {
+internal fun <K> rememberSheetTurn(enabled: Boolean, kind: TurnKind = TurnKind.SHEET): SheetTurn<K>? {
     val context = LocalContext.current
     val allowed = LocalPageTurn3d.current
     val density = LocalDensity.current.density
     if (!(enabled && allowed && Turn3d.available(context))) return null
-    val turn = remember(density) { SheetTurn<K>(density) }
+    val turn = remember(density, kind) { SheetTurn<K>(density, kind) }
     DisposableEffect(turn) { onDispose { turn.dispose() } }
     return turn
 }

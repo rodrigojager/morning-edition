@@ -20,6 +20,12 @@ object TurnSpec {
     /** How long a turn played by itself (a button, a key) lasts, in milliseconds. */
     const val PLAY_MS: Int = 820
 
+    /** How long the book's page takes to swing over the fold by itself, in milliseconds. */
+    const val BOOK_PLAY_MS: Int = 720
+
+    /** Segments of the book's page strip, from the fold to the free edge. */
+    const val BOOK_SEGMENTS: Int = 40
+
     /** The share of the screen's pixels a page picture keeps on a screen with [density] pixels per dp. */
     fun pictureScale(density: Float): Float =
         if (density <= PICTURE_MAX_DENSITY) 1f else PICTURE_MAX_DENSITY / density

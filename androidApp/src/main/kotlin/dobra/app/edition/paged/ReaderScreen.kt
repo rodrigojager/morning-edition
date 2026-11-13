@@ -24,6 +24,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
@@ -34,6 +36,7 @@ import dobra.app.edition.EditionTab
 import dobra.app.edition.LocalLooks
 import dobra.app.edition.chapterIdOf
 import dobra.app.edition.pagesOf
+import dobra.app.turn.TurnKind
 import dobra.app.turn.rememberSheetTurn
 import dobra.model.Edition
 import dobra.model.Item
@@ -80,8 +83,8 @@ private fun animationsOff(): Boolean {
 }
 
 /**
- * The edition in the reading mode the reader chose: the book (two pages and the spine, from 640 dp wide), the single
- * sheet or the scroll, with the pager under it. The place is a chapter and how far into it, so it is kept when the
+ * The edition in the reading mode the reader chose: the book (two pages and the spine, from 640 dp wide; on a foldable
+ * the spine sits on the device's fold), the single sheet or the scroll, with the pager under it. The place is a chapter and how far into it, so it is kept when the
  * mode, the width or the text size changes. [onMode] stores a new choice of the pager chip.
  */
 @Composable
@@ -194,8 +197,12 @@ private fun PagedReader(
             }
         }
     }
-    // The single sheet turns in 3D where the device can draw it; while a sheet is turning the buttons wait.
-    val turn = rememberSheetTurn<ScreenKey>(enabled = perScreen == 1 && !instant)
+    // Pages turn in 3D where the device can draw it: the single sheet rolls off, the book's page swings over the
+    // spine. While a page is turning the buttons wait.
+    val turn = rememberSheetTurn<ScreenKey>(enabled = !instant, kind = if (perScreen == 2) TurnKind.BOOK else TurnKind.SHEET)
+    // On a foldable the book's spine sits on the device's fold.
+    val fold = if (perScreen == 2) rememberVerticalFold() else null
+    var areaLeft by remember { mutableIntStateOf(0) }
     val pagerStep: (Int) -> Unit = { dir -> if (turn?.busy != true) step(dir) }
     goChapter[0] = { id ->
         pagination?.let { p ->
@@ -208,15 +215,21 @@ private fun PagedReader(
     }
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+        BoxWithConstraints(
+            Modifier.weight(1f).fillMaxWidth().onGloballyPositioned { areaLeft = it.positionInWindow().x.roundToInt() },
+        ) {
             val density = LocalDensity.current
             val widthPx = constraints.maxWidth
             val heightPx = constraints.maxHeight
             val padH = with(density) { PageHorizontalPadding.roundToPx() }
             val padV = with(density) { PageVerticalPadding.roundToPx() }
             val spinePx = with(density) { SpineGutter.roundToPx() }
-            val pageOuter = if (perScreen == 2) (widthPx - spinePx) / 2 else widthPx
-            val measureWidth = (pageOuter - 2 * padH).coerceAtLeast(1)
+            val frame = if (perScreen == 2) {
+                BookFrame.book(widthPx, spinePx, fold?.let { (it.first - areaLeft)..(it.last - areaLeft) })
+            } else {
+                BookFrame.single(widthPx)
+            }
+            val measureWidth = (frame.pageWidth - 2 * padH).coerceAtLeast(1)
             val pageHeight = (heightPx - 2 * padV).coerceAtLeast(1)
 
             MeasureLayer(chapters, measureWidth, pageHeight) { m -> if (m != measured) measured = m }
@@ -224,7 +237,7 @@ private fun PagedReader(
             val fresh = measured?.let { it.width == measureWidth && it.pageHeight == pageHeight } == true
             if (pagination != null && fresh) {
                 PagedView(
-                    chapters, pagination, perScreen, pageOuter, ScreenKey(layoutVersion, screen), instant, turn, onStep = step,
+                    chapters, pagination, perScreen, frame, ScreenKey(layoutVersion, screen), instant, turn, onStep = step,
                 )
             }
         }
