@@ -3,6 +3,7 @@
 // No Android UI code here: this module must stay usable from iOS later.
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.android.kotlin.multiplatform.library)
 }
 
@@ -21,6 +22,9 @@ kotlin {
     jvm()
 
     sourceSets {
+        commonMain.dependencies {
+            api(libs.kotlinx.serialization.json)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
