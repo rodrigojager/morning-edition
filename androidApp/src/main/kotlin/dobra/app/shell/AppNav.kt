@@ -13,7 +13,6 @@ import dobra.model.Edition
 import dobra.model.Magazine
 import dobra.store.EditionSummary
 import dobra.store.Store
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Route names of the app: the five tabs. Each feature adds its routes here. */
@@ -38,23 +37,28 @@ fun AppNav(container: AppContainer) {
     }
     val scope = rememberCoroutineScope()
     val settings by s.settings.observe().collectAsState(initial = null)
-    val magazine by s.magazines.observeAll().map { it.firstOrNull() }.collectAsState(initial = null)
+    val magazines by s.magazines.observeAll().collectAsState(initial = null)
+    var openKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val magazine = magazines?.let { list -> list.firstOrNull { it.id == openKey?.substringBefore('/') } ?: list.firstOrNull() }
     val current = settings
     if (current == null) {
         LoadingPage()
         return
     }
     AppShell(
-        data = magazine?.let { m -> EditionSource(s, m) },
+        data = magazine?.let { m -> EditionSource(s, m, openKey?.takeIf { it.startsWith(m.id + "/") }, { openKey = null }) },
         settings = current,
         onSettings = { scope.launch { s.settings.set(it) } },
+        store = s,
+        onOpenEdition = { openKey = it },
     )
 }
 
 /** Picks the edition to show for a magazine (newest first, or the one the reader moved back to). */
 @Composable
-private fun EditionSource(store: Store, magazine: Magazine): ShellData? {
-    var chosen by rememberSaveable { mutableStateOf<String?>(null) }
+private fun EditionSource(store: Store, magazine: Magazine, opened: String?, onChosen: () -> Unit): ShellData? {
+    var older by rememberSaveable { mutableStateOf<String?>(null) }
+    val chosen = opened ?: older
     val summaries: List<EditionSummary> by remember(magazine.id) { store.editions.observe(magazine.id) }
         .collectAsState(initial = emptyList())
     val key = chosen ?: summaries.firstOrNull()?.key ?: return null
@@ -62,5 +66,5 @@ private fun EditionSource(store: Store, magazine: Magazine): ShellData? {
     val loaded = edition ?: return null
     val position = summaries.indexOfFirst { it.key == key }
     val previous = summaries.getOrNull(position + 1)
-    return ShellData(magazine, loaded, previous?.let { p -> { chosen = p.key } })
+    return ShellData(magazine, loaded, previous?.let { p -> { older = p.key; onChosen() } })
 }

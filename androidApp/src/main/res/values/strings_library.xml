@@ -1,4 +1,107 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="library_placeholder">A biblioteca de revistas e edições chega em breve.</string>
+    <string name="library_kicker">Suas revistas</string>
+    <string name="library_title">Biblioteca</string>
+    <string name="library_intro">Cada revista é uma receita: os assuntos, as fontes onde procurar, o padrão em que cada item é escrito e a frequência. As edições e os itens salvos ficam separados por revista.</string>
+    <string name="library_new">Nova revista</string>
+    <string name="library_empty_title">Nenhuma revista</string>
+    <string name="library_empty_body">Crie uma revista para guardar a receita dela.</string>
+    <string name="library_open_page">Receita, fontes e edições</string>
+
+    <string name="cadence_daily">Diária, às %1$dh</string>
+    <string name="cadence_weekly">Semanal, às %1$dh</string>
+    <string name="count_edition_one">%1$d edição</string>
+    <string name="count_edition_many">%1$d edições</string>
+    <string name="count_unread">%1$d por ler</string>
+    <string name="count_unread_none">nenhuma por ler</string>
+    <string name="count_saved_one">%1$d item salvo</string>
+    <string name="count_saved_many">%1$d itens salvos</string>
+    <string name="count_source_one">%1$d fonte</string>
+    <string name="count_source_many">%1$d fontes</string>
+    <string name="count_stories_one">%1$d matéria</string>
+    <string name="count_stories_many">%1$d matérias</string>
+
+    <string name="magazine_back">← Biblioteca</string>
+    <string name="magazine_edit">Editar revista</string>
+    <string name="magazine_delete">Apagar revista</string>
+    <string name="magazine_recipe">Receita</string>
+    <string name="recipe_subjects">Assuntos</string>
+    <string name="recipe_keywords">Palavras-chave dos coletores</string>
+    <string name="recipe_ai">Instruções para a IA</string>
+    <string name="recipe_format">Formato dos itens</string>
+    <string name="recipe_cadence">Frequência</string>
+    <string name="recipe_none">não informados</string>
+    <string name="recipe_ai_line">Escrever em %1$s, no tom “%2$s”.</string>
+    <string name="recipe_ai_no_prompt">Sem instruções a mais.</string>
+    <string name="recipe_format_line">%1$d de %2$d tipos de bloco aceitos.</string>
+    <string name="recipe_format_link">Editar o formato</string>
+    <string name="recipe_version">Receita na versão %1$d</string>
+    <string name="format_placeholder">O editor do formato chega em breve.</string>
+
+    <string name="language_ptbr">Português (Brasil)</string>
+    <string name="language_en">English</string>
+    <string name="language_es">Español</string>
+    <string name="tone_didatico">Mais didático</string>
+    <string name="tone_equilibrado">Equilibrado</string>
+    <string name="tone_direto">Mais direto</string>
+
+    <string name="sources_title">Fontes</string>
+    <string name="sources_hint">Cada fonte é um endereço e o que procurar nele. Aqui fica só o registro dela: nenhum coletor é escrito nem executado.</string>
+    <string name="sources_none_title">Nenhuma fonte</string>
+    <string name="sources_none_body">Adicione o endereço de um site e diga o que procurar nele.</string>
+    <string name="source_add">Adicionar fonte</string>
+    <string name="source_remove">Remover</string>
+    <string name="source_state_none">sem coletor</string>
+    <string name="source_state_working">funcionando</string>
+    <string name="source_state_repairing">em conserto</string>
+    <string name="source_state_unavailable">indisponível</string>
+    <string name="source_looking_for">Procurar: %1$s</string>
+    <string name="source_looking_for_none">Procurar: não informado</string>
+
+    <string name="editions_title">Edições</string>
+    <string name="editions_none_title">Nenhuma edição</string>
+    <string name="editions_none_body">Esta revista ainda não tem edições guardadas.</string>
+    <string name="edition_line">Edição nº %1$d · %2$s</string>
+    <string name="edition_unread">por ler</string>
+    <string name="edition_read">lida</string>
+    <string name="edition_made_with">feita com a receita na versão %1$d</string>
+    <string name="edition_open">Abrir</string>
+    <string name="edition_mark_read">Marcar como lida</string>
+    <string name="edition_mark_unread">Marcar como não lida</string>
+    <string name="edition_delete">Apagar edição</string>
+
+    <string name="form_new_title">Nova revista</string>
+    <string name="form_edit_title">Editar revista</string>
+    <string name="form_name">Nome</string>
+    <string name="form_about">Sobre o que é</string>
+    <string name="form_subjects">Assuntos (separados por vírgula)</string>
+    <string name="form_keywords">Palavras-chave dos coletores (separadas por vírgula)</string>
+    <string name="form_language">Idioma do texto</string>
+    <string name="form_tone">Tom</string>
+    <string name="form_prompt">Instruções livres para a IA</string>
+    <string name="form_cadence">Frequência</string>
+    <string name="form_cadence_daily">Diária</string>
+    <string name="form_cadence_weekly">Semanal</string>
+    <string name="form_hour">Hora (0 a 23)</string>
+    <string name="form_save">Salvar</string>
+    <string name="form_cancel">Cancelar</string>
+    <string name="form_error_name">Dê um nome à revista.</string>
+    <string name="form_error_hour">A hora precisa ser um número de 0 a 23.</string>
+
+    <string name="source_form_title">Nova fonte</string>
+    <string name="source_form_name">Nome (opcional)</string>
+    <string name="source_form_url">Endereço (http ou https)</string>
+    <string name="source_form_liked">O que procurar nela</string>
+    <string name="source_form_error_url">Use um endereço que comece com http:// ou https://.</string>
+
+    <string name="confirm_yes">Apagar</string>
+    <string name="confirm_no">Cancelar</string>
+    <string name="confirm_magazine_title">Apagar a revista %1$s?</string>
+    <string name="confirm_magazine_body">A receita, as fontes e as edições dela saem deste aparelho. Os itens salvos continuam em Salvos.</string>
+    <string name="confirm_edition_title">Apagar a edição nº %1$d?</string>
+    <string name="confirm_edition_body">O conteúdo dela sai deste aparelho. Os itens salvos continuam em Salvos.</string>
+
+    <string name="missing_title">Revista não encontrada</string>
+    <string name="missing_body">Esta revista não está na biblioteca. Ela pode ter sido apagada.</string>
 </resources>

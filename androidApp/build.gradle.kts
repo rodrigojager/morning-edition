@@ -70,6 +70,15 @@ dependencies {
     testImplementation(libs.compose.ui.test.junit4)
 
     robolectricAndroidAll(libs.robolectric.android.all.sdk35)
+
+    // Screen tests open the real store on the JVM: the bundled SQLite of the Android build only has phone libraries,
+    // so the tests swap in the desktop build of the same library (same classes, desktop native files).
+    testImplementation("androidx.sqlite:sqlite-bundled-jvm:${libs.versions.androidx.sqlite.get()}")
+}
+
+configurations.matching { it.name.startsWith("testDebugUnitTest") && it.name.endsWith("RuntimeClasspath") }.configureEach {
+    exclude(group = "androidx.sqlite", module = "sqlite-bundled-android")
+    exclude(group = "androidx.sqlite", module = "sqlite-bundled")
 }
 
 val syncRobolectricAndroidAll = tasks.register<Sync>("syncRobolectricAndroidAll") {

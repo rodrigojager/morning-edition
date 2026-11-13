@@ -40,6 +40,7 @@ import dobra.app.sources.SourcesScreen
 import dobra.model.Edition
 import dobra.model.Magazine
 import dobra.store.DeviceSettings
+import dobra.store.Store
 
 /** The magazine and the edition the Edição tab shows, plus the way back to the previous edition when there is one. */
 class ShellData(
@@ -58,6 +59,8 @@ fun AppShell(
     settings: DeviceSettings,
     onSettings: (DeviceSettings) -> Unit,
     initialTab: String = Routes.EDITION,
+    store: Store? = null,
+    onOpenEdition: (String) -> Unit = {},
 ) {
     AppTheme(settings.theme, settings.textSize.toFloat()) {
         val colors = LocalReaderColors.current
@@ -79,7 +82,13 @@ fun AppShell(
                             onBackToLibrary = { tab = Routes.LIBRARY },
                             onPreviousEdition = data.onPreviousEdition,
                         )
-                        Routes.LIBRARY -> LibraryScreen()
+                        Routes.LIBRARY -> LibraryScreen(
+                            store = store,
+                            onOpenEdition = { key ->
+                                onOpenEdition(key)
+                                tab = Routes.EDITION
+                            },
+                        )
                         Routes.SAVED -> SavedScreen()
                         Routes.SOURCES -> SourcesScreen()
                         Routes.SETTINGS -> SettingsScreen(settings, onSettings)
