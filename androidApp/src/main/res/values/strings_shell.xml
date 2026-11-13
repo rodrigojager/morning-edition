@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings of the app shell. Reader-facing text is Brazilian Portuguese. -->
+<resources>
+    <string name="app_name" translatable="false">Primeira Dobra</string>
+</resources>
