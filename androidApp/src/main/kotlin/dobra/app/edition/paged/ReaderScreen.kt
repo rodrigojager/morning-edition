@@ -34,6 +34,7 @@ import dobra.app.edition.EditionTab
 import dobra.app.edition.LocalLooks
 import dobra.app.edition.chapterIdOf
 import dobra.app.edition.pagesOf
+import dobra.app.turn.rememberSheetTurn
 import dobra.model.Edition
 import dobra.model.Item
 import dobra.model.Magazine
@@ -193,6 +194,9 @@ private fun PagedReader(
             }
         }
     }
+    // The single sheet turns in 3D where the device can draw it; while a sheet is turning the buttons wait.
+    val turn = rememberSheetTurn<ScreenKey>(enabled = perScreen == 1 && !instant)
+    val pagerStep: (Int) -> Unit = { dir -> if (turn?.busy != true) step(dir) }
     goChapter[0] = { id ->
         pagination?.let { p ->
             val c = p.chapters.indexOf(id)
@@ -219,12 +223,14 @@ private fun PagedReader(
 
             val fresh = measured?.let { it.width == measureWidth && it.pageHeight == pageHeight } == true
             if (pagination != null && fresh) {
-                PagedView(chapters, pagination, perScreen, pageOuter, ScreenKey(layoutVersion, screen), instant, onStep = step)
+                PagedView(
+                    chapters, pagination, perScreen, pageOuter, ScreenKey(layoutVersion, screen), instant, turn, onStep = step,
+                )
             }
         }
         PagedPagerBar(
             pagination = pagination, perScreen = perScreen, screen = screen, mode = mode, narrowCount = narrowCount,
-            chapters = chapters, position = position, onStep = step, onCycle = onCycle,
+            chapters = chapters, position = position, onStep = pagerStep, onCycle = onCycle,
         )
     }
 }

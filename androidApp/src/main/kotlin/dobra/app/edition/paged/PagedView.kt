@@ -9,7 +9,8 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,22 +20,39 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import dobra.app.shell.LocalReaderColors
+import dobra.app.turn.DragInput
+import dobra.app.turn.PictureBox
+import dobra.app.turn.SheetTurn
+import dobra.app.turn.SheetTurnOverlay
+import dobra.app.turn.TurnPage
+import kotlinx.coroutines.launch
 import dobra.reader.Page
 import dobra.reader.Pagination
 import dobra.reader.Slice
@@ -54,9 +72,14 @@ internal val SpineGutter: Dp = 28.dp
 /** What the screen shows: one screen of pages of one layout. [layout] changes on every new pagination. */
 internal data class ScreenKey(val layout: Int, val screen: Int)
 
+/** The screen on display and whether a change to it slides (false: it changes at once, under a turn or a jump). */
+private data class Shown(val key: ScreenKey, val slide: Boolean)
+
 /**
- * The pages of one screen at a time, sliding to the next or previous one. A horizontal swipe asks for the next
- * (to the left) or the previous screen (to the right). With [instant] the screens change at once.
+ * The pages of one screen at a time. A change of one screen turns the sheet in 3D when [turn] is given (single sheet,
+ * a device that can draw it) and slides otherwise; with [instant] the screens change at once. A horizontal drag
+ * turns the sheet under the finger, or, without [turn], is a swipe that asks for the next (to the left) or the
+ * previous screen (to the right). [onStep] moves the screen by one.
  */
 @Composable
 internal fun PagedView(
@@ -66,35 +89,113 @@ internal fun PagedView(
     pageWidth: Int,
     target: ScreenKey,
     instant: Boolean,
+    turn: SheetTurn<ScreenKey>?,
     onStep: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val step by rememberUpdatedState(onStep)
-    val swipe = Modifier.pointerInput(Unit) {
-        var total = 0f
-        val threshold = 48.dp.toPx()
-        detectHorizontalDragGestures(
-            onDragStart = { total = 0f },
-            onDragEnd = {
-                if (total <= -threshold) step(1) else if (total >= threshold) step(-1)
-                total = 0f
-            },
-            onDragCancel = { total = 0f },
-        ) { change, dx ->
-            total += dx
-            change.consume()
+    val current by rememberUpdatedState(target)
+    val density = LocalDensity.current
+    val paper = LocalReaderColors.current.page.toArgb()
+    val scope = rememberCoroutineScope()
+    var boxSize by remember { mutableStateOf(IntSize.Zero) }
+    val screens = pagination.screenCount(perScreen)
+    val page = {
+        TurnPage(boxSize.width / density.density, boxSize.height / density.density, paper)
+    }
+
+    var shown by remember { mutableStateOf(Shown(target, slide = false)) }
+    SideEffect { turn?.shown = shown.key }
+    LaunchedEffect(target, turn, instant) {
+        val from = shown.key
+        if (turn == null || instant || from == target) {
+            shown = Shown(target, slide = !instant)
+            return@LaunchedEffect
+        }
+        turn.takeClaim(target)?.let { slide ->
+            shown = Shown(target, slide)
+            return@LaunchedEffect
+        }
+        val dir = target.screen - from.screen
+        val played = from.layout == target.layout && abs(dir) == 1 && boxSize != IntSize.Zero &&
+            turn.play(from, target, dir, page()) { shown = Shown(target, slide = false) }
+        if (!played) shown = Shown(target, slide = true)
+    }
+    val display = if (turn == null) Shown(target, slide = true) else shown
+
+    val gesture = Modifier.pointerInput(turn, screens) {
+        val startSlop = DragStart.toPx()
+        val swipePx = SwipeLength.toPx()
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            var decided = false
+            var drag: DragInput? = null
+            var swipeDir = 0
+            try {
+                while (true) {
+                    val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                    if (!change.pressed) {
+                        drag?.release(change.uptimeMillis)
+                        if (swipeDir != 0 && (down.position.x - change.position.x) * swipeDir >= swipePx && turn?.busy != true) {
+                            step(swipeDir)
+                        }
+                        break
+                    }
+                    val dx = change.position.x - down.position.x
+                    val dy = change.position.y - down.position.y
+                    if (!decided && change.isConsumed) decided = true // a child (a scrolling block) took the gesture
+                    if (!decided && abs(dx) > startSlop && abs(dx) > abs(dy) * 1.2f) {
+                        decided = true
+                        val dir = if (dx < 0) 1 else -1
+                        val from = current
+                        if (from.screen + dir in 0 until screens) {
+                            if (turn != null && !turn.busy && boxSize != IntSize.Zero) {
+                                // where the sheet was taken (how high on the page) shapes the turn, as does the drag
+                                val input = DragInput(
+                                    dir, (down.position.y / size.height).coerceIn(0f, 1f), density.density,
+                                    change.position.x, change.position.y, down.position.x,
+                                )
+                                drag = input
+                                val to = ScreenKey(from.layout, from.screen + dir)
+                                scope.launch { turn.drag(from, to, input, page(), swipePx) { step(it) } }
+                            } else {
+                                swipeDir = dir
+                            }
+                        }
+                    }
+                    drag?.move(change.position.x, change.position.y, change.uptimeMillis)
+                    if (drag != null || swipeDir != 0) change.consume()
+                }
+            } finally {
+                // the gesture was taken away (or ended without a lift): the sheet goes back
+                drag?.takeIf { !it.released.isCompleted }?.cancel()
+            }
         }
     }
-    Box(modifier.fillMaxSize().clipToBounds().then(swipe).testTag("pages")) {
+    Box(
+        modifier.fillMaxSize().clipToBounds().onSizeChanged { boxSize = it }.then(gesture).testTag("pages"),
+    ) {
         if (instant) {
             ScreenView(chapters, pagination, perScreen, target.screen, pageWidth)
         } else {
+            // the screen a turn is about to reach, composed out of sight for its picture
+            val preparing = turn?.preparing
+            if (preparing != null && preparing != display.key) {
+                key(preparing) {
+                    Box(Modifier.fillMaxSize().clearAndSetSemantics { }) {
+                        PictureBox(preparing, turn.pictures, shown = false, Modifier.fillMaxSize()) {
+                            ScreenView(chapters, pagination, perScreen, preparing.screen, pageWidth)
+                        }
+                    }
+                }
+            }
             AnimatedContent(
-                targetState = target,
+                targetState = display,
+                contentKey = { it.key },
                 transitionSpec = {
-                    val from = initialState
-                    val to = targetState
-                    if (from.layout != to.layout || abs(to.screen - from.screen) != 1) {
+                    val from = initialState.key
+                    val to = targetState.key
+                    if (!targetState.slide || from.layout != to.layout || abs(to.screen - from.screen) != 1) {
                         ContentTransform(EnterTransition.None, ExitTransition.None)
                     } else {
                         val dir = if (to.screen > from.screen) 1 else -1
@@ -103,14 +204,23 @@ internal fun PagedView(
                     }
                 },
                 label = "page slide",
-            ) { key ->
-                ScreenView(chapters, pagination, perScreen, key.screen, pageWidth)
+            ) { s ->
+                PictureBox(s.key, turn?.pictures, shown = true, Modifier.fillMaxSize()) {
+                    ScreenView(chapters, pagination, perScreen, s.key.screen, pageWidth)
+                }
             }
+            turn?.let { SheetTurnOverlay(it) }
         }
     }
 }
 
 private const val SLIDE_MS = 320
+
+/** How far a finger goes sideways before the page takes it as a turn (and not a tap). */
+private val DragStart: Dp = 12.dp
+
+/** How long a swipe (a drag without the 3D turn) must be to change the screen. */
+private val SwipeLength: Dp = 48.dp
 
 /** One screen: a single page, or two pages with the spine between them. */
 @Composable
