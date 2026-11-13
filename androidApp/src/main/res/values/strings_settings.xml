@@ -5,4 +5,24 @@
     <string name="theme_paper">Papel</string>
     <string name="theme_sepia">Sépia</string>
     <string name="theme_night">Noite</string>
+    <string name="settings_mode">MODO DE LEITURA</string>
+    <string name="settings_mode_book">Livro</string>
+    <string name="settings_mode_sheet">Folha inteira</string>
+    <string name="settings_mode_scroll">Rolagem</string>
+    <string name="settings_controls">CONTROLES</string>
+    <string name="controls_pinned">Fixos</string>
+    <string name="controls_hidden">Ocultar sozinhos</string>
+    <string name="settings_text_size">TAMANHO DO TEXTO</string>
+    <string name="text_size_small">Pequeno</string>
+    <string name="text_size_normal">Padrão</string>
+    <string name="text_size_large">Grande</string>
+    <string name="text_size_huge">Muito grande</string>
+    <string name="settings_interests">INTERESSES DA REVISTA</string>
+    <string name="settings_interests_hint">Desligar um interesse reduz o peso dessa matéria nas próximas edições.</string>
+    <string name="settings_generation">Geração de edições</string>
+    <string name="generation_placeholder">A geração de edições aparece aqui.</string>
+    <string name="ai_placeholder">Os provedores de IA aparecem aqui.</string>
+    <string name="chrome_pin_on">Controles fixos. Fazer com que se ocultem sozinhos</string>
+    <string name="chrome_pin_off">Os controles se ocultam sozinhos. Deixá-los fixos</string>
+    <string name="chrome_handle">Mostrar os controles, posição %1$s</string>
 </resources>

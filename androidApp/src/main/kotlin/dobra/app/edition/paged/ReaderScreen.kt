@@ -36,6 +36,9 @@ import dobra.app.edition.EditionTab
 import dobra.app.edition.LocalLooks
 import dobra.app.edition.chapterIdOf
 import dobra.app.edition.pagesOf
+import dobra.app.shell.chrome.ChromeFrame
+import dobra.app.shell.chrome.ChromeState
+import dobra.app.shell.chrome.rememberChromeState
 import dobra.app.turn.TurnKind
 import dobra.app.turn.rememberSheetTurn
 import dobra.model.Edition
@@ -43,6 +46,7 @@ import dobra.model.Item
 import dobra.model.Magazine
 import dobra.reader.Pagination
 import dobra.reader.ReadingPosition
+import dobra.store.Controls
 import dobra.store.Keys
 import dobra.store.MarksRepository
 import dobra.store.ReadingMode
@@ -97,7 +101,13 @@ fun ReaderScreen(
     onPreviousEdition: (() -> Unit)? = null,
     marks: MarksRepository? = null,
     modifier: Modifier = Modifier,
+    controls: Controls = Controls.PINNED,
+    onControls: (Controls) -> Unit = {},
+    chrome: ChromeState = rememberChromeState(controls),
 ) {
+    val bars = Bars(chrome, magazine.name, controls == Controls.PINNED) {
+        onControls(if (controls == Controls.PINNED) Controls.HIDDEN else Controls.PINNED)
+    }
     var position by rememberSaveable(edition.key, stateSaver = positionSaver) { mutableStateOf(ReadingPosition("cover")) }
     var lastPaged by rememberSaveable { mutableStateOf(if (mode == ReadingMode.SCROLL) ReadingMode.BOOK else mode) }
     if (mode != ReadingMode.SCROLL && mode != lastPaged) lastPaged = mode
@@ -119,13 +129,13 @@ fun ReaderScreen(
         CompositionLocalProvider(LocalLooks provides magazine.looks) {
             if (shown == ReadingMode.SCROLL) {
                 ScrollReader(
-                    magazine, edition, position, { position = it }, instant, cycle, onBackToLibrary, onPreviousEdition, marks,
+                    magazine, edition, position, { position = it }, instant, cycle, onBackToLibrary, onPreviousEdition, marks, bars,
                 )
             } else {
                 PagedReader(
                     magazine, edition, shown, narrowCount = maxWidth < ShortCountWidth, position = position,
                     onPosition = { position = it }, instant = instant, onCycle = cycle,
-                    onBackToLibrary = onBackToLibrary, onPreviousEdition = onPreviousEdition, marks = marks,
+                    onBackToLibrary = onBackToLibrary, onPreviousEdition = onPreviousEdition, marks = marks, bars = bars,
                 )
             }
         }
@@ -145,7 +155,9 @@ private fun PagedReader(
     onBackToLibrary: () -> Unit,
     onPreviousEdition: (() -> Unit)?,
     marks: MarksRepository?,
+    bars: Bars,
 ) {
+    val chrome = bars.chrome
     val scope = rememberCoroutineScope()
     val savedKeys by remember(marks) {
         marks?.observeSaved()?.map { list -> list.map { it.key }.toSet() } ?: flowOf(emptySet())
@@ -203,7 +215,9 @@ private fun PagedReader(
     // On a foldable the book's spine sits on the device's fold.
     val fold = if (perScreen == 2) rememberVerticalFold() else null
     var areaLeft by remember { mutableIntStateOf(0) }
-    val pagerStep: (Int) -> Unit = { dir -> if (turn?.busy != true) step(dir) }
+    // The pager's buttons bring the controls back and restart their countdown; a swipe sends them away.
+    val pagerStep: (Int) -> Unit = { dir -> if (turn?.busy != true) { chrome.show(); step(dir) } }
+    val swipeStep: (Int) -> Unit = { dir -> chrome.hide(); step(dir) }
     goChapter[0] = { id ->
         pagination?.let { p ->
             val c = p.chapters.indexOf(id)
@@ -214,9 +228,20 @@ private fun PagedReader(
         }
     }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    val count = pagedCount(pagination, perScreen, screen, mode, narrowCount)
+    ChromeFrame(
+        chrome = chrome, title = bars.title, handleText = count,
+        bottom = {
+            PagedPagerBar(
+                pagination = pagination, perScreen = perScreen, screen = screen, mode = mode, count = count,
+                chapters = chapters, position = position, onStep = pagerStep,
+                onCycle = { chrome.touch(); onCycle() }, pinned = bars.pinned, onPin = bars.onPin,
+            )
+        },
+        contentModifier = Modifier.statusBarsPadding(),
+    ) {
         BoxWithConstraints(
-            Modifier.weight(1f).fillMaxWidth().onGloballyPositioned { areaLeft = it.positionInWindow().x.roundToInt() },
+            Modifier.fillMaxSize().onGloballyPositioned { areaLeft = it.positionInWindow().x.roundToInt() },
         ) {
             val density = LocalDensity.current
             val widthPx = constraints.maxWidth
@@ -237,16 +262,26 @@ private fun PagedReader(
             val fresh = measured?.let { it.width == measureWidth && it.pageHeight == pageHeight } == true
             if (pagination != null && fresh) {
                 PagedView(
-                    chapters, pagination, perScreen, frame, ScreenKey(layoutVersion, screen), instant, turn, onStep = step,
+                    chapters, pagination, perScreen, frame, ScreenKey(layoutVersion, screen), instant, turn, onStep = swipeStep,
                 )
             }
         }
-        PagedPagerBar(
-            pagination = pagination, perScreen = perScreen, screen = screen, mode = mode, narrowCount = narrowCount,
-            chapters = chapters, position = position, onStep = pagerStep, onCycle = onCycle,
-        )
     }
 }
+
+@Composable
+private fun pagedCount(pagination: Pagination?, perScreen: Int, screen: Int, mode: ReadingMode, narrowCount: Boolean): String {
+    val screens = pagination?.screenCount(perScreen) ?: 1
+    return when {
+        pagination == null -> ""
+        mode == ReadingMode.BOOK -> stringResource(R.string.count_book, screen * 2 + 1, screen * 2 + 2, screens * 2)
+        narrowCount -> stringResource(R.string.count_short, screen + 1, screens)
+        else -> stringResource(R.string.count_sheet, screen + 1, screens)
+    }
+}
+
+/** What the reader needs of the controls: their state, the top bar's title and the pin button. */
+private class Bars(val chrome: ChromeState, val title: String, val pinned: Boolean, val onPin: () -> Unit)
 
 @Composable
 private fun PagedPagerBar(
@@ -254,19 +289,15 @@ private fun PagedPagerBar(
     perScreen: Int,
     screen: Int,
     mode: ReadingMode,
-    narrowCount: Boolean,
+    count: String,
     chapters: List<ChapterSpec>,
     position: ReadingPosition,
     onStep: (Int) -> Unit,
     onCycle: () -> Unit,
+    pinned: Boolean,
+    onPin: () -> Unit,
 ) {
     val screens = pagination?.screenCount(perScreen) ?: 1
-    val count = when {
-        pagination == null -> ""
-        mode == ReadingMode.BOOK -> stringResource(R.string.count_book, screen * 2 + 1, screen * 2 + 2, screens * 2)
-        narrowCount -> stringResource(R.string.count_short, screen + 1, screens)
-        else -> stringResource(R.string.count_sheet, screen + 1, screens)
-    }
     PagerBar(
         label = chapterLabel(chapters.firstOrNull { it.id == position.chapter } ?: chapters.first()),
         count = count,
@@ -277,6 +308,8 @@ private fun PagedPagerBar(
         scroll = false,
         onStep = onStep,
         onCycle = onCycle,
+        pinned = pinned,
+        onPin = onPin,
     )
 }
 
@@ -304,7 +337,10 @@ private fun ScrollReader(
     onBackToLibrary: () -> Unit,
     onPreviousEdition: (() -> Unit)?,
     marks: MarksRepository?,
+    bars: Bars,
 ) {
+    val chrome = bars.chrome
+    val jumping = remember { BooleanArray(1) }
     val pages = remember(edition) { pagesOf(edition) }
     val ids = remember(pages) { pages.map(::chapterIdOf) }
     val chapterIds = remember(ids) { ids.distinct() }
@@ -329,10 +365,17 @@ private fun ScrollReader(
             }.filterNotNull().first()
             listState.scrollToItem(opening.toInt(), (within * height).roundToInt())
         }
-        // From here on the position follows the reader's scroll.
+        // From here on the position follows the reader's scroll, and the controls follow its direction.
+        var last = listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }
             .drop(1)
             .collect { (index, offset) ->
+                if (!jumping[0] && chrome.auto) {
+                    val down = index > last.first || (index == last.first && offset > last.second)
+                    val up = index < last.first || (index == last.first && offset < last.second)
+                    if (down) chrome.hide() else if (up) chrome.show()
+                }
+                last = index to offset
                 val id = ids.getOrElse(index) { ids.last() }
                 val r = range(id)
                 val size = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.size ?: 1
@@ -341,35 +384,48 @@ private fun ScrollReader(
             }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        Box(Modifier.weight(1f).fillMaxWidth()) {
-            EditionTab(magazine, edition, onBackToLibrary, onPreviousEdition, marks, listState)
-        }
-        val index = listState.firstVisibleItemIndex
-        val currentId = ids.getOrElse(index) { ids.first() }
-        val c = chapterIds.indexOf(currentId)
-        val total = (pages.size - 1).coerceAtLeast(1)
-        val progress = (index.toFloat() / total).coerceIn(0f, 1f)
-        val atEnd = !listState.canScrollForward
-        PagerBar(
-            label = scrollLabel(currentId, edition),
-            count = stringResource(R.string.count_scroll, if (atEnd) 100 else (progress * 100).roundToInt()),
-            progress = if (atEnd) 1f else progress,
-            mode = ReadingMode.SCROLL,
-            atStart = index == 0 && listState.firstVisibleItemScrollOffset == 0,
-            atEnd = c >= chapterIds.size - 1,
-            scroll = true,
-            onStep = { dir ->
-                val here = range(currentId).first
-                val target = if (dir < 0 && (index > here || listState.firstVisibleItemScrollOffset > 0)) currentId
-                else chapterIds.getOrNull(c + dir)
-                if (target != null) {
-                    val to = range(target).first
-                    scope.launch { if (instant) listState.scrollToItem(to) else listState.animateScrollToItem(to) }
-                }
-            },
-            onCycle = onCycle,
-        )
+    val index = listState.firstVisibleItemIndex
+    val currentId = ids.getOrElse(index) { ids.first() }
+    val c = chapterIds.indexOf(currentId)
+    val total = (pages.size - 1).coerceAtLeast(1)
+    val progress = (index.toFloat() / total).coerceIn(0f, 1f)
+    val atEnd = !listState.canScrollForward
+    val count = stringResource(R.string.count_scroll, if (atEnd) 100 else (progress * 100).roundToInt())
+    ChromeFrame(
+        chrome = chrome, title = bars.title, handleText = count,
+        bottom = {
+            PagerBar(
+                label = scrollLabel(currentId, edition),
+                count = count,
+                progress = if (atEnd) 1f else progress,
+                mode = ReadingMode.SCROLL,
+                atStart = index == 0 && listState.firstVisibleItemScrollOffset == 0,
+                atEnd = c >= chapterIds.size - 1,
+                scroll = true,
+                onStep = { dir ->
+                    chrome.show()
+                    val here = range(currentId).first
+                    val target = if (dir < 0 && (index > here || listState.firstVisibleItemScrollOffset > 0)) currentId
+                    else chapterIds.getOrNull(c + dir)
+                    if (target != null) {
+                        val to = range(target).first
+                        scope.launch {
+                            jumping[0] = true
+                            try {
+                                if (instant) listState.scrollToItem(to) else listState.animateScrollToItem(to)
+                            } finally {
+                                jumping[0] = false
+                            }
+                        }
+                    }
+                },
+                onCycle = { chrome.touch(); onCycle() },
+                pinned = bars.pinned,
+                onPin = bars.onPin,
+            )
+        },
+    ) {
+        EditionTab(magazine, edition, onBackToLibrary, onPreviousEdition, marks, listState)
     }
 }
 

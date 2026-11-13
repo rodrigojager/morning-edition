@@ -40,6 +40,12 @@ import dobra.app.edition.paged.ReaderScreen
 import dobra.app.library.LibraryScreen
 import dobra.app.saved.SavedScreen
 import dobra.app.settings.SettingsScreen
+import dobra.app.shell.chrome.rememberChromeState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.layout.onSizeChanged
+import kotlinx.coroutines.launch
 import dobra.app.sources.SourcesScreen
 import dobra.model.Edition
 import dobra.model.Magazine
@@ -71,15 +77,17 @@ fun AppShell(
         val colors = LocalReaderColors.current
         var tab by rememberSaveable { mutableStateOf(initialTab) }
         val holder = rememberSaveableStateHolder()
+        val chrome = rememberChromeState(settings.controls)
+        val scope = rememberCoroutineScope()
+        // In the hiding mode the page of the edition takes the whole screen and the tab bar is drawn over it.
+        val overlay = chrome.auto && tab == Routes.EDITION
+        val barShown = !overlay || chrome.visible
+        LaunchedEffect(tab) { if (tab == Routes.EDITION) chrome.show() }
+        DisposableEffect(barShown) { onDispose { chrome.tabBarPx = 0 } }
+        val savedCount by remember(store) { store?.marks?.observeSaved()?.map { it.size } ?: flowOf(0) }
+            .collectAsState(initial = 0)
         dobra.app.ask.AskHost(ai) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .testTag("app-root")
-                .semantics { pageBackground = colors.bg }
-                .background(colors.bg),
-        ) {
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+        val body: @Composable () -> Unit = {
                 holder.SaveableStateProvider(tab) {
                     when (tab) {
                         Routes.EDITION -> if (data == null) LoadingContent() else ReaderScreen(
@@ -90,6 +98,9 @@ fun AppShell(
                             onBackToLibrary = { tab = Routes.LIBRARY },
                             onPreviousEdition = data.onPreviousEdition,
                             marks = store?.marks,
+                            controls = settings.controls,
+                            onControls = { onSettings(settings.copy(controls = it)) },
+                            chrome = chrome,
                         )
                         Routes.LIBRARY -> LibraryScreen(
                             store = store,
@@ -100,13 +111,29 @@ fun AppShell(
                         )
                         Routes.SAVED -> SavedScreen(store)
                         Routes.SOURCES -> SourcesScreen()
-                        Routes.SETTINGS -> SettingsScreen(settings, onSettings, ai)
+                        Routes.SETTINGS -> SettingsScreen(
+                            settings, onSettings, ai,
+                            topics = data?.magazine?.topics.orEmpty(),
+                            onTopics = data?.let { d -> { topics -> scope.launch { store?.magazines?.save(d.magazine.copy(topics = topics)) } } },
+                        )
+                    }
+                }
+        }
+        val root = Modifier.fillMaxSize().testTag("app-root").semantics { pageBackground = colors.bg }.background(colors.bg)
+        if (overlay) {
+            Box(root) {
+                Box(Modifier.fillMaxSize()) { body() }
+                if (barShown) {
+                    Box(Modifier.align(Alignment.BottomCenter).onSizeChanged { chrome.tabBarPx = it.height }) {
+                        TabBar(selected = tab, onSelect = { tab = it }, savedCount = savedCount)
                     }
                 }
             }
-            val savedCount by remember(store) { store?.marks?.observeSaved()?.map { it.size } ?: flowOf(0) }
-                .collectAsState(initial = 0)
-            TabBar(selected = tab, onSelect = { tab = it }, savedCount = savedCount)
+        } else {
+            Column(root) {
+                Box(Modifier.weight(1f).fillMaxWidth()) { body() }
+                TabBar(selected = tab, onSelect = { tab = it }, savedCount = savedCount)
+            }
         }
         }
     }

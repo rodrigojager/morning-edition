@@ -72,7 +72,7 @@ class AiProvidersScreenTest {
         root.deleteRecursively()
     }
 
-    private fun openRoute() = compose.onNodeWithTag("settings-ai").performClick()
+    private fun openRoute() = compose.onNodeWithTag("settings-ai").performScrollTo().performClick()
     private fun tap(tag: String) = compose.onNodeWithTag(tag).performScrollTo().performClick()
     private fun type(tag: String, text: String) = compose.onNodeWithTag(tag).performScrollTo().performTextInput(text)
 

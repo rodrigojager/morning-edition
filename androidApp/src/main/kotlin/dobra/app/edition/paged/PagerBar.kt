@@ -26,11 +26,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,6 +66,8 @@ internal fun PagerBar(
     scroll: Boolean,
     onStep: (Int) -> Unit,
     onCycle: () -> Unit,
+    pinned: Boolean = true,
+    onPin: (() -> Unit)? = null,
 ) {
     val colors = LocalReaderColors.current
     Column(
@@ -108,6 +112,32 @@ internal fun PagerBar(
                 modifier = Modifier.testTag("pager-count"),
             )
             Arrow(back = false, enabled = !atEnd, description = next, tag = "page-next") { onStep(1) }
+            if (onPin != null) PinButton(pinned, onPin)
+        }
+    }
+}
+
+/** Switches between fixed controls and controls that hide by themselves. */
+@Composable
+private fun PinButton(pinned: Boolean, onClick: () -> Unit) {
+    val colors = LocalReaderColors.current
+    val description = stringResource(if (pinned) R.string.chrome_pin_on else R.string.chrome_pin_off)
+    Box(
+        Modifier
+            .size(44.dp)
+            .clip(CircleShape)
+            .border(1.dp, if (pinned) colors.accent else colors.rule, CircleShape)
+            .clickable(role = Role.Switch, onClick = onClick)
+            .semantics { contentDescription = description; selected = pinned }
+            .testTag("pin-button"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(18.dp)) {
+            val w = size.width
+            val tint = if (pinned) colors.accent else colors.ink
+            // a pin: the head, the body and the needle
+            drawCircle(tint, radius = w * 0.2f, center = Offset(w * 0.5f, w * 0.3f), style = if (pinned) Fill else Stroke(1.6.dp.toPx()))
+            drawLine(tint, Offset(w * 0.5f, w * 0.5f), Offset(w * 0.5f, w * 0.9f), strokeWidth = 1.6.dp.toPx(), cap = StrokeCap.Round)
         }
     }
 }
