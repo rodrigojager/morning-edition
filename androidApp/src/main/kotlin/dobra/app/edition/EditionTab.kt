@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -79,6 +79,18 @@ internal fun pagesOf(edition: Edition): List<Page> = buildList {
     add(Page.End)
 }
 
+/**
+ * The chapter of the reading position a piece of the scroll belongs to: the cover, the contents, one per story, the
+ * short notes together, the backstage with the end mark. The paged reader uses the same ids.
+ */
+internal fun chapterIdOf(page: Page): String = when (page) {
+    Page.Cover -> "cover"
+    Page.Toc -> "toc"
+    is Page.Chapter -> if (page.item.kind == ItemKind.STORY) "story-${page.item.id}" else "notes"
+    Page.NotesHeader -> "notes"
+    Page.Backstage, Page.End -> "backstage"
+}
+
 internal fun Item.title(): String = blocks.firstOrNull { it.type == "title" }?.text("text").orEmpty()
 
 internal fun Item.readMin(): Int? = blocks.firstOrNull { it.type == "title" }?.int("readMin")
@@ -94,9 +106,9 @@ fun EditionTab(
     onBackToLibrary: () -> Unit,
     onPreviousEdition: (() -> Unit)? = null,
     marks: MarksRepository? = null,
+    listState: LazyListState = rememberLazyListState(),
 ) {
     val pages = remember(edition) { pagesOf(edition) }
-    val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val stories = remember(edition) { edition.items.filter { it.kind == ItemKind.STORY } }
     val savedKeys by remember(marks) {
@@ -110,7 +122,7 @@ fun EditionTab(
         ) {
             items(pages.size, key = { pages[it].key }) { index ->
                 when (val page = pages[index]) {
-                    Page.Cover -> CoverPage(magazine, edition, stories.firstOrNull())
+                    Page.Cover -> CoverContent(magazine, edition, stories.firstOrNull(), Modifier.fillParentMaxHeight())
                     Page.Toc -> TocPage(stories) { item ->
                         scope.launch { listState.scrollToItem(pages.indexOfFirst { it.key == "chapter-${item.id}" }) }
                     }
@@ -139,15 +151,17 @@ fun EditionTab(
     }
 }
 
+/** The cover: the magazine's name, the edition's number and date, and the first story. */
 @Composable
-private fun LazyItemScope.CoverPage(magazine: Magazine, edition: Edition, first: Item?) {
+internal fun CoverContent(
+    magazine: Magazine, edition: Edition, first: Item?, modifier: Modifier = Modifier, padded: Boolean = true,
+) {
     val colors = LocalReaderColors.current
     val scale = LocalTextScale.current
     Column(
-        Modifier
-            .fillParentMaxHeight()
+        modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 32.dp)
+            .padding(horizontal = if (padded) 24.dp else 0.dp, vertical = if (padded) 32.dp else 12.dp)
             .testTag("cover"),
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -182,34 +196,45 @@ private fun TocPage(stories: List<Item>, onOpen: (Item) -> Unit) {
     val colors = LocalReaderColors.current
     val scale = LocalTextScale.current
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp).testTag("toc")) {
-        Text(
-            stringResource(R.string.toc_title), color = colors.ink, fontFamily = AppFonts.display,
-            fontWeight = FontWeight(650), fontSize = (26 * scale).sp,
-        )
+        TocTitle()
         Spacer(Modifier.height(12.dp))
-        stories.forEachIndexed { i, item ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .testTag("toc-${item.id}")
-                    .clickable { onOpen(item) }
-                    .heightIn(min = 52.dp)
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("${i + 1}".padStart(2, '0'), color = colors.accent, fontFamily = AppFonts.mono, fontSize = (13 * scale).sp)
-                Text(
-                    item.title(), color = colors.ink, fontFamily = AppFonts.text, fontSize = (17 * scale).sp,
-                    lineHeight = (21 * scale).sp, modifier = Modifier.weight(1f),
-                )
-                item.readMin()?.let {
-                    Text(
-                        stringResource(R.string.toc_read_min, it), color = colors.ink3, fontFamily = AppFonts.mono,
-                        fontSize = (12 * scale).sp, modifier = Modifier.testTag("toc-min-${item.id}"),
-                    )
-                }
-            }
+        stories.forEachIndexed { i, item -> TocRow(i, item, onOpen) }
+    }
+}
+
+@Composable
+internal fun TocTitle() {
+    Text(
+        stringResource(R.string.toc_title), color = LocalReaderColors.current.ink, fontFamily = AppFonts.display,
+        fontWeight = FontWeight(650), fontSize = (26 * LocalTextScale.current).sp,
+    )
+}
+
+/** One line of the contents: the story's number, title and reading time; touching it opens the story. */
+@Composable
+internal fun TocRow(index: Int, item: Item, onOpen: (Item) -> Unit) {
+    val colors = LocalReaderColors.current
+    val scale = LocalTextScale.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .testTag("toc-${item.id}")
+            .clickable { onOpen(item) }
+            .heightIn(min = 52.dp)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("${index + 1}".padStart(2, '0'), color = colors.accent, fontFamily = AppFonts.mono, fontSize = (13 * scale).sp)
+        Text(
+            item.title(), color = colors.ink, fontFamily = AppFonts.text, fontSize = (17 * scale).sp,
+            lineHeight = (21 * scale).sp, modifier = Modifier.weight(1f),
+        )
+        item.readMin()?.let {
+            Text(
+                stringResource(R.string.toc_read_min, it), color = colors.ink3, fontFamily = AppFonts.mono,
+                fontSize = (12 * scale).sp, modifier = Modifier.testTag("toc-min-${item.id}"),
+            )
         }
     }
 }
@@ -229,15 +254,12 @@ private fun ChapterPage(
     onSave: () -> Unit,
 ) {
     val colors = LocalReaderColors.current
-    val scope = rememberCoroutineScope()
     val isStory = item.kind == ItemKind.STORY
-    var feedback by remember(itemKey) { mutableStateOf<Feedback?>(null) }
     LaunchedEffect(itemKey, marks) {
         if (isStory) marks?.setStoryRead(itemKey)
-        feedback = marks?.feedback(itemKey)
     }
     val blocks = remember(item, format) { shownBlocks(item.blocks, format) }
-    val head = blocks.takeWhile { it.type in headTypes }
+    val head = headOf(blocks)
     val body = blocks.drop(head.size)
     CompositionLocalProvider(LocalStoryNumber provides (if (isStory) number else 0)) {
         Column(
@@ -249,19 +271,7 @@ private fun ChapterPage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             head.forEach { BlockView(it) }
-            if (isStory) {
-                StoryActions(
-                    itemId = item.id,
-                    saved = saved,
-                    feedback = feedback,
-                    onSave = onSave,
-                    onFeedback = { choice ->
-                        val next = if (feedback == choice) null else choice
-                        feedback = next
-                        scope.launch { marks?.setFeedback(itemKey, next) }
-                    },
-                )
-            }
+            if (isStory) ItemStoryActions(item, itemKey, saved, marks, onSave)
             body.forEach { BlockView(it) }
             if (!isStory) NoteSave(item.id, saved, onSave)
         }
@@ -270,31 +280,67 @@ private fun ChapterPage(
 
 private val headTypes = setOf("illustration", "title", "summary")
 
+/** The head of a story: the leading illustration, title and summary, above its buttons. */
+internal fun headOf(blocks: List<dobra.model.Block>): List<dobra.model.Block> = blocks.takeWhile { it.type in headTypes }
+
+/** The buttons of a story with the reader's feedback read from and written to the marks. */
 @Composable
-private fun NotesHeader() {
+internal fun ItemStoryActions(item: Item, itemKey: String, saved: Boolean, marks: MarksRepository?, onSave: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    var feedback by remember(itemKey) { mutableStateOf<Feedback?>(null) }
+    LaunchedEffect(itemKey, marks) { feedback = marks?.feedback(itemKey) }
+    StoryActions(
+        itemId = item.id,
+        saved = saved,
+        feedback = feedback,
+        onSave = onSave,
+        onFeedback = { choice ->
+            val next = if (feedback == choice) null else choice
+            feedback = next
+            scope.launch { marks?.setFeedback(itemKey, next) }
+        },
+    )
+}
+
+@Composable
+internal fun NotesHeader(padded: Boolean = true) {
     val colors = LocalReaderColors.current
     Text(
         stringResource(R.string.notes_title), color = colors.ink, fontFamily = AppFonts.display,
         fontWeight = FontWeight(650), fontSize = (26 * LocalTextScale.current).sp,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp).testTag("notes-header"),
+        modifier = Modifier.fillMaxWidth().then(if (padded) Modifier.padding(horizontal = 24.dp, vertical = 28.dp) else Modifier)
+            .testTag("notes-header"),
     )
 }
 
 @Composable
 private fun BackstagePage(collection: List<CollectionLine>, leftOut: List<LeftOut>) {
-    val colors = LocalReaderColors.current
-    val scale = LocalTextScale.current
+    val parts = remember(collection, leftOut) { backstageParts(collection, leftOut) }
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 28.dp).testTag("backstage"),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        parts.forEach { it() }
+    }
+}
+
+/**
+ * The backstage in parts that stay whole on a page: the title, each label, each source consulted and each story left
+ * out. Drawn one under the other, 8 dp apart.
+ */
+internal fun backstageParts(collection: List<CollectionLine>, leftOut: List<LeftOut>): List<@Composable () -> Unit> = buildList {
+    add {
         Text(
-            stringResource(R.string.backstage_title), color = colors.ink, fontFamily = AppFonts.display,
-            fontWeight = FontWeight(650), fontSize = (26 * scale).sp,
+            stringResource(R.string.backstage_title), color = LocalReaderColors.current.ink, fontFamily = AppFonts.display,
+            fontWeight = FontWeight(650), fontSize = (26 * LocalTextScale.current).sp,
         )
-        if (collection.isNotEmpty()) {
-            Label(stringResource(R.string.backstage_collection))
-            collection.forEach { line ->
+    }
+    if (collection.isNotEmpty()) {
+        add { Label(stringResource(R.string.backstage_collection)) }
+        collection.forEach { line ->
+            add {
+                val colors = LocalReaderColors.current
+                val scale = LocalTextScale.current
                 val state = stringResource(
                     when (line.state) {
                         CollectionState.ANSWERED -> R.string.state_answered
@@ -302,20 +348,32 @@ private fun BackstagePage(collection: List<CollectionLine>, leftOut: List<LeftOu
                         CollectionState.FAILED -> R.string.state_failed
                     },
                 )
-                Text(
-                    "${line.source} · ${stringResource(R.string.collection_records, line.records)} · $state",
-                    color = if (line.state == CollectionState.FAILED) colors.accent else colors.ink2,
-                    fontFamily = AppFonts.text, fontSize = (15 * scale).sp,
-                )
-                line.note?.let { Text(it, color = colors.ink3, fontFamily = AppFonts.text, fontSize = (14 * scale).sp) }
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        "${line.source} · ${stringResource(R.string.collection_records, line.records)} · $state",
+                        color = if (line.state == CollectionState.FAILED) colors.accent else colors.ink2,
+                        fontFamily = AppFonts.text, fontSize = (15 * scale).sp,
+                    )
+                    line.note?.let { Text(it, color = colors.ink3, fontFamily = AppFonts.text, fontSize = (14 * scale).sp) }
+                }
             }
         }
-        if (leftOut.isNotEmpty()) {
-            Spacer(Modifier.height(8.dp))
-            Label(stringResource(R.string.backstage_left_out))
-            leftOut.forEach {
-                Text(it.title, color = colors.ink, fontFamily = AppFonts.text, fontWeight = FontWeight.SemiBold, fontSize = (15 * scale).sp)
-                Text(it.reason, color = colors.ink3, fontFamily = AppFonts.text, fontSize = (14 * scale).sp)
+    }
+    if (leftOut.isNotEmpty()) {
+        add {
+            Column {
+                Spacer(Modifier.height(8.dp))
+                Label(stringResource(R.string.backstage_left_out))
+            }
+        }
+        leftOut.forEach {
+            add {
+                val colors = LocalReaderColors.current
+                val scale = LocalTextScale.current
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(it.title, color = colors.ink, fontFamily = AppFonts.text, fontWeight = FontWeight.SemiBold, fontSize = (15 * scale).sp)
+                    Text(it.reason, color = colors.ink3, fontFamily = AppFonts.text, fontSize = (14 * scale).sp)
+                }
             }
         }
     }
@@ -331,10 +389,10 @@ private fun Label(text: String) {
 
 /** After the last chapter: the way back to the library, and to the previous edition when there is one. */
 @Composable
-private fun EndMark(onBackToLibrary: () -> Unit, onPreviousEdition: (() -> Unit)?) {
+internal fun EndMark(onBackToLibrary: () -> Unit, onPreviousEdition: (() -> Unit)?, padded: Boolean = true) {
     val colors = LocalReaderColors.current
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 40.dp).testTag("end-mark"),
+        Modifier.fillMaxWidth().padding(horizontal = if (padded) 24.dp else 0.dp, vertical = 40.dp).testTag("end-mark"),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {

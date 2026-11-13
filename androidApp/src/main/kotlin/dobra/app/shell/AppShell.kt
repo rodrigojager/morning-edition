@@ -32,7 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dobra.app.R
-import dobra.app.edition.EditionTab
+import dobra.app.edition.paged.ReaderScreen
 import dobra.app.library.LibraryScreen
 import dobra.app.saved.SavedScreen
 import dobra.app.settings.SettingsScreen
@@ -76,9 +76,11 @@ fun AppShell(
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 holder.SaveableStateProvider(tab) {
                     when (tab) {
-                        Routes.EDITION -> if (data == null) LoadingContent() else EditionTab(
+                        Routes.EDITION -> if (data == null) LoadingContent() else ReaderScreen(
                             magazine = data.magazine,
                             edition = data.edition,
+                            mode = settings.readingMode,
+                            onMode = { onSettings(settings.copy(readingMode = it)) },
                             onBackToLibrary = { tab = Routes.LIBRARY },
                             onPreviousEdition = data.onPreviousEdition,
                             marks = store?.marks,

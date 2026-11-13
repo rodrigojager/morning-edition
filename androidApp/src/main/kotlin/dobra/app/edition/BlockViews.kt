@@ -34,6 +34,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -111,6 +114,29 @@ fun shownBlocks(blocks: List<Block>, format: Format): List<Block> {
 
 /** The looks of the magazine being read: font, size, colour and alignment per block type. */
 val LocalLooks = staticCompositionLocalOf<Looks> { emptyMap() }
+
+// ---- where a page may cut a block ----
+
+/**
+ * Told, while the paged reader measures the edition, where the lines of each text end and where each entry (a glossary
+ * term, a fact sheet row, a source link, a row of evidence) ends, so that a page can end a block there. [key] stays the
+ * same for one text or entry across layouts.
+ */
+interface CutSink {
+    fun lines(key: Any, coordinates: LayoutCoordinates, layout: TextLayoutResult)
+    fun entry(key: Any, coordinates: LayoutCoordinates)
+}
+
+/** The sink of the block being measured for pages; null everywhere else. */
+val LocalCutSink = staticCompositionLocalOf<CutSink?> { null }
+
+/** Marks an entry a page should not cut through. */
+@Composable
+internal fun Modifier.cutEntry(): Modifier {
+    val sink = LocalCutSink.current ?: return this
+    val key = remember { Any() }
+    return onGloballyPositioned { sink.entry(key, it) }
+}
 
 // ---- field readers ----
 
@@ -196,9 +222,12 @@ private fun BlockText(
     val look = LocalLooks.current[type]
     val colors = LocalReaderColors.current
     val factor = look?.size?.toFloatOrNull() ?: 1f
+    val sink = LocalCutSink.current
+    val laidOut = remember { arrayOfNulls<TextLayoutResult>(1) }
     Text(
         text,
-        modifier = modifier,
+        modifier = if (sink == null) modifier else modifier.onGloballyPositioned { c -> laidOut[0]?.let { sink.lines(laidOut, c, it) } },
+        onTextLayout = { laidOut[0] = it },
         color = lookColor(look?.color, colors) ?: color,
         fontFamily = lookFont(look?.font) ?: font,
         fontWeight = weight,
@@ -290,7 +319,7 @@ fun GlossaryBlock(block: Block) {
     Column(Modifier.fillMaxWidth()) {
         HorizontalDivider(color = colors.rule)
         block.pairs("terms").forEach { row ->
-            Column(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.fillMaxWidth().cutEntry().padding(vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 BlockText(
                     "glossary", markup(row.getOrNull(0).orEmpty()), AppFonts.mono, 13f, 18f, colors.accent,
                     weight = FontWeight.SemiBold,
@@ -461,7 +490,7 @@ fun FactSheetBlock(block: Block) {
     val difficulty = block.int("difficulty")
     Column(Modifier.fillMaxWidth().clip(shape).border(1.dp, colors.rule, shape).background(colors.page)) {
         block.pairs("rows").chunked(2).forEach { pair ->
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).cutEntry()) {
                 pair.forEach { row ->
                     Column(Modifier.weight(1f).fillMaxHeight().padding(horizontal = 14.dp, vertical = 10.dp)) {
                         Text(
@@ -526,7 +555,7 @@ fun EvidenceBlock(block: Block) {
     Column(Modifier.fillMaxWidth()) {
         block.pairs("rows").forEach { row ->
             HorizontalDivider(color = colors.rule)
-            Row(Modifier.fillMaxWidth().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().cutEntry().padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     row.getOrNull(0).orEmpty(), color = colors.accent, fontFamily = AppFonts.mono,
                     fontSize = scaled(12f), modifier = Modifier.width(88.dp).padding(top = 2.dp),
@@ -576,7 +605,7 @@ fun SourcesBlock(block: Block) {
         block.objects("links").forEach { link ->
             val label = link.text("label").orEmpty()
             val url = link.text("url")
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(Modifier.cutEntry(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 link.text("role")?.let {
                     Text(it, color = colors.ink3, fontFamily = AppFonts.mono, fontSize = scaled(10.5f))
                 }
