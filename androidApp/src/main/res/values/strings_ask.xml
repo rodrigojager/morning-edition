@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings of the "Perguntar à IA" panel. Reader-facing text is Brazilian Portuguese. -->
+<resources>
+    <string name="ask_title">Perguntar à IA</string>
+    <string name="ask_close">Fechar</string>
+    <string name="ask_provider_label">PROVEDOR</string>
+    <string name="ask_model_label">Modelo (código do modelo)</string>
+    <string name="ask_effort_label">ESFORÇO DE PENSAMENTO</string>
+    <string name="ask_effort_low">Baixo</string>
+    <string name="ask_effort_medium">Médio</string>
+    <string name="ask_effort_high">Alto</string>
+    <string name="ask_missing_provider">Falta configurar um provedor de IA. Adicione um provedor com a sua chave e escolha quem responde perguntas.</string>
+    <string name="ask_open_providers">Abrir Provedores de IA</string>
+    <string name="ask_missing_model">Escolha o código do modelo para poder enviar a pergunta.</string>
+    <string name="ask_suggestion_1">Explique como se eu não fosse da área</string>
+    <string name="ask_suggestion_2">Quais são os riscos disso?</string>
+    <string name="ask_suggestion_3">O que ainda não foi confirmado nesta matéria?</string>
+    <string name="ask_input_label">Sua pergunta sobre esta matéria</string>
+    <string name="ask_send">Enviar pergunta</string>
+    <string name="ask_sending">Enviando…</string>
+    <string name="ask_you">Você</string>
+    <string name="ask_ai">IA</string>
+    <string name="ask_sent_title">O que foi enviado</string>
+    <string name="ask_sent_reference">Referência: o texto da matéria e os links das fontes, %1$d caracteres e %2$d links.</string>
+    <string name="ask_sent_never">Nada sobre você vai junto: nem suas notas, nem suas marcações.</string>
+    <string name="ask_sent_last">Última pergunta (%1$s): %2$d tokens enviados, %3$d recebidos, custo %4$s.</string>
+    <string name="ask_cost_unknown">sem preço informado</string>
+    <string name="ask_error_refused">O provedor recusou a chave.</string>
+    <string name="ask_error_rate">O provedor pediu para esperar um pouco. Tente de novo em instantes.</string>
+    <string name="ask_error_unreachable">Não foi possível falar com o provedor agora. Confira a conexão.</string>
+    <string name="ask_error_other">A pergunta não pôde ser respondida agora.</string>
+</resources>

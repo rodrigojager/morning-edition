@@ -71,6 +71,7 @@ fun AppShell(
         val colors = LocalReaderColors.current
         var tab by rememberSaveable { mutableStateOf(initialTab) }
         val holder = rememberSaveableStateHolder()
+        dobra.app.ask.AskHost(ai) {
         Column(
             Modifier
                 .fillMaxSize()
@@ -106,6 +107,7 @@ fun AppShell(
             val savedCount by remember(store) { store?.marks?.observeSaved()?.map { it.size } ?: flowOf(0) }
                 .collectAsState(initial = 0)
             TabBar(selected = tab, onSelect = { tab = it }, savedCount = savedCount)
+        }
         }
     }
 }

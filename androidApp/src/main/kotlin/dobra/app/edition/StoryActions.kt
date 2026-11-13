@@ -53,7 +53,7 @@ internal fun PillButton(label: String, tag: String, on: Boolean, accent: Boolean
 }
 
 /**
- * The buttons under the head of a story: ask the AI (drawn, opens nothing yet), save, and say more or less of this.
+ * The buttons under the head of a story: ask the AI ([onAsk] opens the panel), save, and say more or less of this.
  * [feedback] is the reader's current choice; touching it again clears it.
  */
 @OptIn(ExperimentalLayoutApi::class)
@@ -64,13 +64,14 @@ internal fun StoryActions(
     feedback: Feedback?,
     onSave: () -> Unit,
     onFeedback: (Feedback) -> Unit,
+    onAsk: () -> Unit = {},
 ) {
     FlowRow(
         Modifier.testTag("actions-$itemId"),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        PillButton(stringResource(R.string.story_ask_ai), "ask-$itemId", on = false, accent = true) {}
+        PillButton(stringResource(R.string.story_ask_ai), "ask-$itemId", on = false, accent = true, onClick = onAsk)
         PillButton(
             stringResource(if (saved) R.string.story_saved else R.string.story_save), "save-$itemId", saved, onClick = onSave,
         )

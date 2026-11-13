@@ -289,11 +289,13 @@ internal fun ItemStoryActions(item: Item, itemKey: String, saved: Boolean, marks
     val scope = rememberCoroutineScope()
     var feedback by remember(itemKey) { mutableStateOf<Feedback?>(null) }
     LaunchedEffect(itemKey, marks) { feedback = marks?.feedback(itemKey) }
+    val opener = dobra.app.ask.LocalAskOpener.current
     StoryActions(
         itemId = item.id,
         saved = saved,
         feedback = feedback,
         onSave = onSave,
+        onAsk = { opener?.invoke(item, itemKey) },
         onFeedback = { choice ->
             val next = if (feedback == choice) null else choice
             feedback = next
