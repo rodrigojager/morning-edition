@@ -42,13 +42,18 @@ object ProviderPresets {
     )
 }
 
-/** One request to a model. [maxOutputTokens] null lets the provider decide (Anthropic requires one: 4096 then). */
+/**
+ * One request to a model. [maxOutputTokens] null lets the provider decide (Anthropic requires one: 4096 then).
+ * [jsonOutput] asks for a JSON object as the answer where the provider has a switch for it (the OpenAI-style JSON mode,
+ * which DeepSeek and compatible endpoints share); the prompt must still describe the JSON and the answer is validated.
+ */
 data class AiRequest(
     val model: String,
     val user: String,
     val system: String? = null,
     val effort: Effort? = null,
     val maxOutputTokens: Int? = null,
+    val jsonOutput: Boolean = false,
 )
 
 data class TokenUsage(val inputTokens: Long, val outputTokens: Long)

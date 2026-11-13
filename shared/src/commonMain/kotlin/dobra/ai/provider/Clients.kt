@@ -81,6 +81,8 @@ class OpenAiStyleClient(
             )
             request.effort?.let { put("reasoning_effort", it.name.lowercase()) }
             request.maxOutputTokens?.let { put("max_tokens", it) }
+            // JSON mode: documented by OpenAI and by DeepSeek (its only structured option) as {"type": "json_object"}.
+            if (request.jsonOutput) put("response_format", buildJsonObject { put("type", "json_object") })
         }
         val response = transport.send(HttpRequest("POST", "$base/chat/completions", headers, body.toString())).orThrow()
         val json = parseObject(response.body)
@@ -105,6 +107,9 @@ class AnthropicClient(
         get() = mapOf("x-api-key" to key, "anthropic-version" to VERSION, "content-type" to "application/json")
 
     override suspend fun complete(request: AiRequest): ModelAnswer {
+        // [AiRequest.jsonOutput] has no plain switch here: Anthropic's structured outputs take a full schema in a
+        // subset (no oneOf, every object closed) that a magazine's format schema is not, so the prompt describes the
+        // JSON and the caller validates the answer.
         val budget = request.effort?.let { THINKING_BUDGET.getValue(it) }
         val body = buildJsonObject {
             put("model", request.model)

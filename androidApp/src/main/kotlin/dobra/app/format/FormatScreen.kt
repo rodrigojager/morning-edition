@@ -52,6 +52,7 @@ fun FormatScreen(
     magazineId: String,
     onBack: () -> Unit,
     onOpenEdition: (String) -> Unit = {},
+    maker: dobra.app.library.MakeRunner? = null,
 ) {
     val magazines by remember(store) { store.magazines.observeAll() }.collectAsState(initial = null)
     val list = magazines
@@ -69,11 +70,12 @@ fun FormatScreen(
     }
     val summaries by remember(magazineId) { store.editions.observe(magazineId) }.collectAsState(initial = null)
     val newest = summaries?.firstOrNull()?.key
-    val loadedEdition by produceState<Edition?>(null, newest, summaries == null) { value = newest?.let { store.editions.get(it) } }
+    // Keyed on the summaries too: a rewrite stores the same edition again with a new recipe version.
+    val loadedEdition by produceState<Edition?>(null, newest, summaries) { value = newest?.let { store.editions.get(it) } }
     val edition = if (newest == null) null else loadedEdition
     val scope = rememberCoroutineScope()
     val save: (Magazine) -> Unit = { m -> scope.launch { store.magazines.save(m) } }
-    FormatPage(magazine, edition, newest, summaries != null, save, onBack, onOpenEdition)
+    FormatPage(magazine, edition, newest, summaries != null, save, onBack, onOpenEdition, maker)
 }
 
 @Composable
@@ -85,6 +87,7 @@ private fun FormatPage(
     save: (Magazine) -> Unit,
     onBack: () -> Unit,
     onOpenEdition: (String) -> Unit,
+    maker: dobra.app.library.MakeRunner?,
 ) {
     val res = LocalContext.current.resources
     val format = magazine.format
@@ -141,6 +144,7 @@ private fun FormatPage(
 
         SectionTitle(stringResource(R.string.format_check_title))
         CheckSection(edition, editionsKnown, format)
+        if (maker != null && edition != null) RewriteSection(magazine, edition, maker)
 
         SectionTitle(stringResource(R.string.format_schema_title))
         Body(stringResource(R.string.format_schema_note))

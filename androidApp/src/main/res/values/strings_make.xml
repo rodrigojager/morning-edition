@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings of "Gerar edição agora" and of the format editor's rewrite. Reader-facing text is Brazilian Portuguese. -->
+<resources>
+    <string name="make_now">Gerar edição agora</string>
+    <string name="make_hint">Coleta as fontes, a IA escolhe o que vale a pena e escreve cada matéria no formato da revista. Cada matéria é conferida antes de entrar.</string>
+    <string name="make_collecting">Coletando… %1$d de %2$d fontes</string>
+    <string name="make_choosing">A IA está escolhendo o que entra na edição…</string>
+    <string name="make_writing">Escrevendo e conferindo… %1$d de %2$d matérias</string>
+    <string name="make_saving">Guardando a edição…</string>
+    <string name="make_current">Agora: %1$s</string>
+    <string name="make_done_title">Edição nº %1$d pronta</string>
+    <string name="make_done_counts">%1$s · %2$s · custo de IA: US$ %3$s em %4$d chamadas</string>
+    <string name="make_left_one">%1$d deixada de fora</string>
+    <string name="make_left_many">%1$d deixadas de fora</string>
+    <string name="make_open">Abrir a edição</string>
+    <string name="make_left_title">O QUE FICOU DE FORA</string>
+    <string name="make_left_line">%1$s: %2$s</string>
+    <string name="make_nothing_collected">As fontes não trouxeram nada novo para escrever. Nenhuma edição foi criada.</string>
+    <string name="make_nothing_written">Nada passou pela escolha e pela conferência da IA, então nenhuma edição foi criada. Isso pode acontecer: é melhor do que encher a edição.</string>
+    <string name="make_selection_unreadable">A IA não devolveu uma escolha que o app consiga ler, mesmo depois de 3 tentativas. Nenhuma edição foi criada.</string>
+    <string name="make_refused_by_store">Uma edição com esta data foi apagada antes, então ela não foi criada de novo.</string>
+    <string name="make_cost">Custo de IA desta tentativa: US$ %1$s em %2$d chamadas</string>
+
+    <string name="make_missing_provider">Para gerar uma edição falta um provedor de IA. Adicione um em Ajustes › Provedores de IA e escolha quem faz o trabalho “Reescrever”.</string>
+    <string name="make_missing_choice">Falta escolher qual provedor faz o trabalho “Reescrever”. Escolha em Ajustes › Provedores de IA.</string>
+    <string name="make_missing_model">Falta escolher o modelo do trabalho “Reescrever” em Ajustes › Provedores de IA.</string>
+    <string name="make_missing_key">A chave do provedor escolhido para “Reescrever” não está neste aparelho. Adicione o provedor de novo em Ajustes › Provedores de IA.</string>
+
+    <string name="make_fail_key">O provedor recusou a chave. Confira-a em Ajustes › Provedores de IA.</string>
+    <string name="make_fail_rate">O provedor pediu para esperar um pouco. Tente de novo em instantes.</string>
+    <string name="make_fail_unreachable">Não foi possível falar com o provedor de IA. Confira a conexão e tente de novo.</string>
+    <string name="make_fail_other">Não deu certo: %1$s</string>
+
+    <string name="rewrite_title">REESCREVER PARA ESTE FORMATO</string>
+    <string name="rewrite_body">A IA reescreve as matérias que estão fora do formato atual, com os mesmos fatos e links. Uma matéria que não ficar válida continua como estava.</string>
+    <string name="rewrite_action">Pedir à IA para reescrever a edição</string>
+    <string name="rewrite_running">Reescrevendo… %1$d de %2$d matérias</string>
+    <string name="rewrite_done">%1$d de %2$d matérias reescritas para o formato atual · custo de IA: US$ %3$s</string>
+    <string name="rewrite_kept_title">O QUE CONTINUOU COMO ESTAVA</string>
+    <string name="rewrite_nothing">Nenhuma matéria estava fora do formato; nada foi pedido à IA.</string>
+</resources>

@@ -48,6 +48,7 @@ private const val NEW = "form:new"
 fun LibraryScreen(
     store: Store?,
     collector: dobra.collect.worker.MagazineCollector? = null,
+    maker: MakeRunner? = null,
     onOpenEdition: (String) -> Unit = {},
 ) {
     if (store == null) {
@@ -62,9 +63,9 @@ fun LibraryScreen(
         page.startsWith("form:") -> MagazineForm(store, page.removePrefix("form:"), go)
         page.startsWith("src:") -> SourceForm(store, page.removePrefix("src:"), go)
         page.startsWith("fmt:") -> page.removePrefix("fmt:").let { id ->
-            dobra.app.format.FormatScreen(store, id, onBack = { go("mag:$id") }, onOpenEdition = onOpenEdition)
+            dobra.app.format.FormatScreen(store, id, onBack = { go("mag:$id") }, onOpenEdition = onOpenEdition, maker = maker)
         }
-        else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition, collector)
+        else -> MagazinePage(store, page.removePrefix("mag:"), go, onOpenEdition, collector, maker)
     }
 }
 
@@ -135,6 +136,7 @@ private fun MagazinePage(
     go: (String) -> Unit,
     onOpenEdition: (String) -> Unit,
     collector: dobra.collect.worker.MagazineCollector?,
+    maker: MakeRunner?,
 ) {
     val magazines by remember(store) { store.magazines.observeAll() }.collectAsState(initial = null)
     val list = magazines
@@ -204,6 +206,7 @@ private fun MagazinePage(
         if (collector != null) dobra.app.sources.CollectNow(m, collector)
 
         SectionTitle(stringResource(R.string.editions_title))
+        if (maker != null) MakeNow(m, maker, onOpenEdition)
         if (editions.isEmpty()) {
             Empty(stringResource(R.string.editions_none_title), stringResource(R.string.editions_none_body), "editions-empty")
         }

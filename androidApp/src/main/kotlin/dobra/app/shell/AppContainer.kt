@@ -41,6 +41,11 @@ class AppContainer(private val context: Context) {
         ).collect(magazine, onProgress)
     }
 
+    /** "Gerar edição agora" and the format editor's rewrite, run in the app's scope so they survive a change of tab. */
+    val maker: dobra.app.library.MakeRunner by lazy {
+        dobra.app.library.MakeRunner(scope, { store.await() }, ai, collector, pages = dobra.app.library.HttpPageReader())
+    }
+
     private fun readSeed(): SeedContent {
         fun asset(name: String) = context.assets.open(name).bufferedReader().use { it.readText() }
         return SeedContent(Seed.magazine(asset(Seed.MAGAZINE_FILE)), Seed.edition(asset(Seed.EDITION_FILE)))
