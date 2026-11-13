@@ -19,8 +19,14 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -35,10 +41,16 @@ import dobra.app.shell.LocalTextScale
 import dobra.model.CollectionLine
 import dobra.model.CollectionState
 import dobra.model.Edition
+import dobra.model.Format
 import dobra.model.Item
 import dobra.model.ItemKind
 import dobra.model.LeftOut
 import dobra.model.Magazine
+import dobra.store.Feedback
+import dobra.store.Keys
+import dobra.store.MarksRepository
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** The pieces of the one continuous scroll, in order. */
@@ -81,26 +93,47 @@ fun EditionTab(
     edition: Edition,
     onBackToLibrary: () -> Unit,
     onPreviousEdition: (() -> Unit)? = null,
+    marks: MarksRepository? = null,
 ) {
     val pages = remember(edition) { pagesOf(edition) }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val stories = remember(edition) { edition.items.filter { it.kind == ItemKind.STORY } }
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxWidth().testTag("edition-scroll"),
-        contentPadding = WindowInsets.statusBars.asPaddingValues(),
-    ) {
-        items(pages.size, key = { pages[it].key }) { index ->
-            when (val page = pages[index]) {
-                Page.Cover -> CoverPage(magazine, edition, stories.firstOrNull())
-                Page.Toc -> TocPage(stories) { item ->
-                    scope.launch { listState.scrollToItem(pages.indexOfFirst { it.key == "chapter-${item.id}" }) }
+    val savedKeys by remember(marks) {
+        marks?.observeSaved()?.map { list -> list.map { it.key }.toSet() } ?: flowOf(emptySet())
+    }.collectAsState(initial = emptySet())
+    CompositionLocalProvider(LocalLooks provides magazine.looks) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxWidth().testTag("edition-scroll"),
+            contentPadding = WindowInsets.statusBars.asPaddingValues(),
+        ) {
+            items(pages.size, key = { pages[it].key }) { index ->
+                when (val page = pages[index]) {
+                    Page.Cover -> CoverPage(magazine, edition, stories.firstOrNull())
+                    Page.Toc -> TocPage(stories) { item ->
+                        scope.launch { listState.scrollToItem(pages.indexOfFirst { it.key == "chapter-${item.id}" }) }
+                    }
+                    is Page.Chapter -> {
+                        val itemKey = Keys.item(edition.key, page.item.id)
+                        ChapterPage(
+                            item = page.item,
+                            number = stories.indexOfFirst { it.id == page.item.id } + 1,
+                            format = magazine.format,
+                            itemKey = itemKey,
+                            saved = itemKey in savedKeys,
+                            marks = marks,
+                            onSave = {
+                                scope.launch {
+                                    if (itemKey in savedKeys) marks?.unsave(itemKey) else marks?.save(edition.key, page.item)
+                                }
+                            },
+                        )
+                    }
+                    Page.NotesHeader -> NotesHeader()
+                    Page.Backstage -> BackstagePage(edition.collection, edition.leftOut)
+                    Page.End -> EndMark(onBackToLibrary, onPreviousEdition)
                 }
-                is Page.Chapter -> ChapterPage(page.item)
-                Page.NotesHeader -> NotesHeader()
-                Page.Backstage -> BackstagePage(edition.collection, edition.leftOut)
-                Page.End -> EndMark(onBackToLibrary, onPreviousEdition)
             }
         }
     }
@@ -181,21 +214,61 @@ private fun TocPage(stories: List<Item>, onOpen: (Item) -> Unit) {
     }
 }
 
-/** One story or note: its blocks, one after the other. */
+/**
+ * One story or note: its blocks, one after the other, as the magazine's format lets them be shown. A story has its
+ * buttons under the head (illustration, title, summary) and counts as read once it is opened; a note ends with Salvar.
+ */
 @Composable
-private fun ChapterPage(item: Item) {
+private fun ChapterPage(
+    item: Item,
+    number: Int,
+    format: Format,
+    itemKey: String,
+    saved: Boolean,
+    marks: MarksRepository?,
+    onSave: () -> Unit,
+) {
     val colors = LocalReaderColors.current
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .testTag("chapter-${item.id}")
-            .background(colors.page)
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        item.blocks.forEach { BlockView(it) }
+    val scope = rememberCoroutineScope()
+    val isStory = item.kind == ItemKind.STORY
+    var feedback by remember(itemKey) { mutableStateOf<Feedback?>(null) }
+    LaunchedEffect(itemKey, marks) {
+        if (isStory) marks?.setStoryRead(itemKey)
+        feedback = marks?.feedback(itemKey)
+    }
+    val blocks = remember(item, format) { shownBlocks(item.blocks, format) }
+    val head = blocks.takeWhile { it.type in headTypes }
+    val body = blocks.drop(head.size)
+    CompositionLocalProvider(LocalStoryNumber provides (if (isStory) number else 0)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .testTag("chapter-${item.id}")
+                .background(colors.page)
+                .padding(horizontal = 24.dp, vertical = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            head.forEach { BlockView(it) }
+            if (isStory) {
+                StoryActions(
+                    itemId = item.id,
+                    saved = saved,
+                    feedback = feedback,
+                    onSave = onSave,
+                    onFeedback = { choice ->
+                        val next = if (feedback == choice) null else choice
+                        feedback = next
+                        scope.launch { marks?.setFeedback(itemKey, next) }
+                    },
+                )
+            }
+            body.forEach { BlockView(it) }
+            if (!isStory) NoteSave(item.id, saved, onSave)
+        }
     }
 }
+
+private val headTypes = setOf("illustration", "title", "summary")
 
 @Composable
 private fun NotesHeader() {

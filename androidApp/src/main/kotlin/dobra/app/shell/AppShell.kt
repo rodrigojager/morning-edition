@@ -81,6 +81,7 @@ fun AppShell(
                             edition = data.edition,
                             onBackToLibrary = { tab = Routes.LIBRARY },
                             onPreviousEdition = data.onPreviousEdition,
+                            marks = store?.marks,
                         )
                         Routes.LIBRARY -> LibraryScreen(
                             store = store,

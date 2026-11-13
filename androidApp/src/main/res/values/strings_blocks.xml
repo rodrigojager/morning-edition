@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="block_facts_label">Fato verificado na fonte</string>
+    <string name="block_hypothesis_label">Hipótese para o seu contexto · não verificada</string>
+    <string name="block_why_heading">Por que está na sua edição</string>
+    <string name="block_difficulty">Dificuldade para adotar</string>
+    <string name="block_difficulty_level">%1$d de 3</string>
+    <string name="block_image_unavailable">Imagem da fonte indisponível no momento; o texto não depende dela.</string>
+    <string name="block_image_credit">Crédito:</string>
+    <string name="block_video_label">Vídeo</string>
+    <string name="block_plate_description">Ilustração gerada pelo app: %1$s</string>
+    <string name="story_ask_ai">Perguntar à IA</string>
+    <string name="story_save">Salvar</string>
+    <string name="story_saved">Salva</string>
+    <string name="story_more">Mais disso</string>
+    <string name="story_less">Menos disso</string>
+</resources>

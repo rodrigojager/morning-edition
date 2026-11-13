@@ -50,7 +50,7 @@ class EditionTabTest {
         val chapter = "chapter-${story.id}"
         compose.onNodeWithTag("edition-scroll").performScrollToNode(hasTestTag(chapter))
 
-        val drawn = setOf("title", "summary", "section", "paragraph", "list", "note", "sources")
+        val drawn = dobra.model.Blocks.ids.toSet()
         val expected = story.blocks.map { it.type }.filter { it in drawn }.map { "block-$it" }
         assertEquals(expected, blockTags(chapter))
         assertTrue(expected.containsAll(listOf("block-title", "block-summary", "block-section", "block-list", "block-note", "block-sources")))
