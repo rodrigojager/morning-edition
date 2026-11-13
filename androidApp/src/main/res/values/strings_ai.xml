@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings of the AI providers screen. Reader-facing text is Brazilian Portuguese. -->
+<resources>
+    <string name="ai_route">Provedores de IA</string>
+    <string name="ai_back">Voltar</string>
+    <string name="ai_added_title">PROVEDORES ADICIONADOS</string>
+    <string name="ai_none">Nenhum provedor ainda. Adicione um abaixo com a sua chave.</string>
+    <string name="ai_key_last4">chave terminada em %1$s</string>
+    <string name="ai_remove">Remover</string>
+    <string name="ai_add_title">ADICIONAR PROVEDOR</string>
+    <string name="ai_preset_other">Outro</string>
+    <string name="ai_field_name">Nome</string>
+    <string name="ai_field_url">Endereço da API</string>
+    <string name="ai_field_key">Chave da API</string>
+    <string name="ai_field_price_in">Preço de entrada (US$ por milhão de tokens, opcional)</string>
+    <string name="ai_field_price_out">Preço de saída (US$ por milhão de tokens, opcional)</string>
+    <string name="ai_kind_openai">Formato OpenAI (OpenAI, DeepSeek e compatíveis)</string>
+    <string name="ai_kind_anthropic">Formato Anthropic</string>
+    <string name="ai_add">Adicionar</string>
+    <string name="ai_key_hint">A chave fica guardada cifrada neste aparelho e nunca é mostrada de novo.</string>
+    <string name="ai_jobs_title">QUEM FAZ CADA TRABALHO</string>
+    <string name="ai_job_write_collectors">Escrever coletores</string>
+    <string name="ai_job_rewrite">Reescrever</string>
+    <string name="ai_job_answer">Responder perguntas</string>
+    <string name="ai_job_model">Modelo (código do modelo)</string>
+    <string name="ai_job_list_models">Listar modelos do provedor</string>
+    <string name="ai_effort_low">Esforço baixo</string>
+    <string name="ai_effort_medium">Esforço médio</string>
+    <string name="ai_effort_high">Esforço alto</string>
+    <string name="ai_error_refused">O provedor recusou a chave.</string>
+    <string name="ai_error_rate">O provedor pediu para esperar um pouco. Tente de novo em instantes.</string>
+    <string name="ai_error_other">Não foi possível listar os modelos agora.</string>
+</resources>

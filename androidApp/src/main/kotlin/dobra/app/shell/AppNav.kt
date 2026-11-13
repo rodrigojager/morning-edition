@@ -51,6 +51,7 @@ fun AppNav(container: AppContainer) {
         onSettings = { scope.launch { s.settings.set(it) } },
         store = s,
         onOpenEdition = { openKey = it },
+        ai = container.ai,
     )
 }
 

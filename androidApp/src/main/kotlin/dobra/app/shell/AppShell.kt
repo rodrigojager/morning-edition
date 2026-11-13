@@ -65,6 +65,7 @@ fun AppShell(
     initialTab: String = Routes.EDITION,
     store: Store? = null,
     onOpenEdition: (String) -> Unit = {},
+    ai: dobra.app.ai.AiSetup? = null,
 ) {
     AppTheme(settings.theme, settings.textSize.toFloat()) {
         val colors = LocalReaderColors.current
@@ -98,7 +99,7 @@ fun AppShell(
                         )
                         Routes.SAVED -> SavedScreen(store)
                         Routes.SOURCES -> SourcesScreen()
-                        Routes.SETTINGS -> SettingsScreen(settings, onSettings)
+                        Routes.SETTINGS -> SettingsScreen(settings, onSettings, ai)
                     }
                 }
             }

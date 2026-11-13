@@ -1,6 +1,15 @@
 package dobra.app.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import dobra.app.ai.AiProvidersScreen
+import dobra.app.ai.AiSetup
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,8 +37,14 @@ import dobra.store.Theme
 
 /** Device settings. For now: the reading theme (Papel, Sépia, Noite). */
 @Composable
-fun SettingsScreen(settings: DeviceSettings, onChange: (DeviceSettings) -> Unit) {
+fun SettingsScreen(settings: DeviceSettings, onChange: (DeviceSettings) -> Unit, ai: AiSetup? = null) {
     val colors = LocalReaderColors.current
+    var showAi by rememberSaveable { mutableStateOf(false) }
+    if (ai != null && showAi) {
+        BackHandler { showAi = false }
+        AiProvidersScreen(ai, onBack = { showAi = false })
+        return
+    }
     Column(
         Modifier.fillMaxSize().statusBarsPadding().padding(20.dp).testTag("screen-settings"),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -63,6 +78,21 @@ fun SettingsScreen(settings: DeviceSettings, onChange: (DeviceSettings) -> Unit)
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 )
             }
+        }
+        if (ai != null) {
+            Text(
+                text = stringResource(R.string.ai_route),
+                color = colors.ink,
+                fontFamily = AppFonts.mono,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .testTag("settings-ai")
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .border(1.dp, colors.rule, RoundedCornerShape(10.dp))
+                    .clickable(role = Role.Button) { showAi = true }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+            )
         }
     }
 }

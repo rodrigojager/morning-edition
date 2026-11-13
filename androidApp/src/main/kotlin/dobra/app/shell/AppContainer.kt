@@ -26,6 +26,9 @@ class AppContainer(private val context: Context) {
         openStore(File(context.filesDir, "store").path, seed = ::readSeed)
     }
 
+    /** AI providers, their sealed keys, the usage ledger and the one way of calling a model. */
+    val ai: dobra.app.ai.AiSetup by lazy { dobra.app.ai.AiSetup.create(context) }
+
     private fun readSeed(): SeedContent {
         fun asset(name: String) = context.assets.open(name).bufferedReader().use { it.readText() }
         return SeedContent(Seed.magazine(asset(Seed.MAGAZINE_FILE)), Seed.edition(asset(Seed.EDITION_FILE)))
