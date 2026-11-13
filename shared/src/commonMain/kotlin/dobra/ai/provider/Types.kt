@@ -4,7 +4,7 @@ import kotlinx.serialization.Serializable
 
 /** API-key formats plus the separate ChatGPT plan Responses protocol. */
 @Serializable
-enum class ProviderKind { OPENAI_STYLE, ANTHROPIC, CHATGPT_OAUTH }
+enum class ProviderKind { OPENAI_STYLE, ANTHROPIC, CHATGPT_OAUTH, OPENCODE }
 
 /** The three jobs of the AI; each has its own provider and model. */
 @Serializable
@@ -12,7 +12,21 @@ enum class AiJob { WRITE_COLLECTORS, REWRITE, ANSWER }
 
 /** Generic thinking effort, mapped by each client to what its provider accepts. */
 @Serializable
-enum class Effort { LOW, MEDIUM, HIGH }
+enum class Effort { LOW, MEDIUM, HIGH, AUTO, NONE, MINIMAL, XHIGH, MAX, ULTRA }
+
+@Serializable
+enum class EffortMode { THINKING_BUDGET, OUTPUT_CONFIG }
+
+/** Account catalog metadata is optional: null means the server did not advertise that capability. */
+data class ModelOption(
+    val id: String,
+    val name: String = id,
+    val efforts: List<Effort>? = null,
+    val serviceTiers: List<ServiceTier> = emptyList(),
+    val effortMode: EffortMode = EffortMode.THINKING_BUDGET,
+)
+
+data class ServiceTier(val id: String, val name: String)
 
 /** A provider the reader added. The key itself is never part of this record: only its last four characters. */
 @Serializable
@@ -29,15 +43,24 @@ data class ProviderConfig(
 
 /** Which provider, model and effort a job uses. */
 @Serializable
-data class JobChoice(val providerId: String, val model: String, val effort: Effort = Effort.MEDIUM)
+data class JobChoice(
+    val providerId: String,
+    val model: String,
+    val effort: Effort = Effort.MEDIUM,
+    val serviceTier: String? = null,
+    val effortMode: EffortMode = EffortMode.THINKING_BUDGET,
+)
 
 /** Starting points offered when adding a provider. The reader may edit the address. */
 data class ProviderPreset(val name: String, val kind: ProviderKind, val baseUrl: String)
 
 object ProviderPresets {
+    val claude = ProviderPreset("Claude", ProviderKind.ANTHROPIC, "https://api.anthropic.com/v1")
+    val openCode = ProviderPreset("OpenCode Console", ProviderKind.OPENCODE, OpenCodeClient.BASE)
     val all = listOf(
         ProviderPreset("OpenAI", ProviderKind.OPENAI_STYLE, "https://api.openai.com/v1"),
-        ProviderPreset("Anthropic", ProviderKind.ANTHROPIC, "https://api.anthropic.com/v1"),
+        claude,
+        openCode,
         ProviderPreset("DeepSeek", ProviderKind.OPENAI_STYLE, "https://api.deepseek.com"),
     )
 }
@@ -54,6 +77,8 @@ data class AiRequest(
     val effort: Effort? = null,
     val maxOutputTokens: Int? = null,
     val jsonOutput: Boolean = false,
+    val serviceTier: String? = null,
+    val effortMode: EffortMode = EffortMode.THINKING_BUDGET,
 )
 
 data class TokenUsage(val inputTokens: Long, val outputTokens: Long)

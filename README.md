@@ -26,7 +26,7 @@ names. The folder is taken from the environment variable `DOBRA_SECRETS`, else t
 `dobra.secretsDir`, else `../_secrets` next to the repository. Without it the release build stops with a message
 saying what is missing.
 
-Release 0.2.0: `androidApp-release.apk`, version code 2, minSdk 28 (Android 9), targetSdk 35.
+Release 0.3.0: `androidApp-release.apk`, version code 3, minSdk 28 (Android 9), targetSdk 35.
 
 ## Install the release APK on a phone
 
@@ -44,9 +44,12 @@ installed over this one without uninstalling it first (which deletes the app's d
 ## ChatGPT sign-in (0.2.0)
 
 In Ajustes › Provedores de IA, tap **Continuar com ChatGPT**. Finish authorization in the system browser,
-allow ChatGPT plan usage when offered, then return to the app. Select ChatGPT for each AI job and tap
-**Listar modelos do provedor** to choose a model available to the connected account. API-key providers remain
-available alongside ChatGPT, and each job can use a different provider.
+allow ChatGPT plan usage when offered, then return to the app. The connected card shows the account and model
+configuration instead of offering sign-in again. Tap **Escolher modelos e esforço** to choose the active provider,
+search the account's models and set reasoning effort for each job. Lists load automatically; **Atualizar listas de
+modelos** refreshes them. **Usar esta configuração em todas as tarefas** copies the selected provider, model and
+options to all three jobs. Choices survive restarting the app. Switching provider clears the previous model and
+options; switching model resets options to automatic.
 
 This uses the [official public OAuth flow](https://developers.openai.com/siwc/token-sharing-open-source/sign-in),
 with PKCE, state, nonce and signed ID-token validation. One account can be connected at a time on this device.
@@ -59,5 +62,33 @@ ChatGPT requests use the public Responses endpoint with `store: false` and `stre
 streams are rejected. Plan eligibility, account model access and shared plan limits apply, as described in the
 [preview limitations](https://developers.openai.com/siwc/token-sharing-open-source/preview-limitations).
 The usage button opens ChatGPT's usage and permission settings; the app's token ledger does not estimate remaining
-plan allowance. OAuth and AndroidKeyStore still need acceptance on a real phone; local tests use synthetic tokens
-and a loopback callback. Shared inference logic remains portable; the iOS app and its OAuth host are not implemented.
+plan allowance. The reader confirmed sign-in works on their phone; new model controls are covered locally with
+synthetic catalogs and requests, and still need acceptance with real account capabilities. Shared inference logic
+remains portable; the iOS app and its OAuth host are not implemented.
+
+## API keys and model options
+
+Claude and OpenCode Console have dedicated cards with service icons, a link to obtain a key, and the same job
+configuration controls. Their official API roots are prefilled and editable: `https://api.anthropic.com/v1` and
+`https://opencode.ai/inference`. OpenAI, DeepSeek and custom compatible services remain under **Outros serviços e
+configuração da API**, with editable presets. Keys are encrypted on the device; no computer or bridge is needed.
+Connecting a provider does not select it for every job: the active provider is shown in each job's configuration.
+
+Claude uses separately billed Anthropic API access. Its paginated model catalog supplies display names and effort
+capabilities; modern effort uses `output_config.effort`, while saved legacy choices retain thinking budgets.
+Fast mode is offered for the generally available model IDs documented by Anthropic (Opus 5.5, Fable 5.2, Mythos 5.2)
+and uses `speed: fast`. Preview/deprecated fast-mode beta contracts are not enabled.
+
+OpenCode uses the [public Console inference API](https://opencode.ai/docs/console/harnesses/) with a personal API
+key and paid account credits. Subscription OAuth, Go and models restricted to OpenCode's own free tier are not
+offered here. The adapter uses the edited root for `/v1/models` and `/openai/v1/chat/completions` and identifies
+this app in its user agent.
+
+**Automático** omits explicit effort/speed and lets the service choose. Known effort levels are shown from catalog
+metadata. If a compatible service omits capability metadata, the UI explains that the generic low/medium/high
+choices may not be accepted by that model. Manual model IDs remain available when discovery is unavailable.
+ChatGPT speed tiers are offered only when advertised by its catalog; other services without supported speed modes
+show the default. Faster tiers can have separate charges and limits; they are not a promise of account access.
+
+Service icons derive from the [OpenAI sign-in devkit](https://github.com/openai/sign-in-with-chatgpt-devkit) and
+the [OpenCode provider assets](https://github.com/anomalyco/opencode/tree/dev/packages/ui/src/assets/provider).

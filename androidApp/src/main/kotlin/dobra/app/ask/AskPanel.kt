@@ -41,7 +41,6 @@ import dobra.ai.ask.StoryReference
 import dobra.ai.provider.AiException
 import dobra.ai.provider.AiJob
 import dobra.ai.provider.Effort
-import dobra.ai.provider.JobChoice
 import dobra.app.R
 import dobra.app.ai.AiProvidersScreen
 import dobra.app.ai.AiSetup
@@ -121,17 +120,17 @@ fun AskPanel(ai: AiSetup, item: Item, itemKey: String, onClose: () -> Unit) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             settings.providers.forEach { p ->
                 Chip(p.name, choice?.providerId == p.id, "ask-provider-${p.id}") {
-                    ai.registry.choose(AiJob.ANSWER, JobChoice(p.id, choice?.model.orEmpty(), choice?.effort ?: Effort.MEDIUM))
+                    ai.registry.selectProvider(AiJob.ANSWER, p.id)
                 }
             }
             Chip(stringResource(R.string.ask_open_providers), false, "ask-open-providers") { showProviders = true }
         }
         if (choice != null) {
             Label(stringResource(R.string.ask_model_label))
-            TextBox(choice.model, "ask-model", singleLine = true) { ai.registry.choose(AiJob.ANSWER, choice.copy(model = it.trim())) }
+            TextBox(choice.model, "ask-model", singleLine = true) { ai.registry.selectModel(AiJob.ANSWER, it.trim()) }
             Label(stringResource(R.string.ask_effort_label))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Effort.entries.forEach { e ->
+                listOf(Effort.AUTO, Effort.LOW, Effort.MEDIUM, Effort.HIGH, choice.effort).distinct().forEach { e ->
                     Chip(stringResource(effortLabel(e)), choice.effort == e, "ask-effort-${e.name}") {
                         ai.registry.choose(AiJob.ANSWER, choice.copy(effort = e))
                     }
@@ -220,6 +219,7 @@ private fun effortLabel(effort: Effort) = when (effort) {
     Effort.LOW -> R.string.ask_effort_low
     Effort.MEDIUM -> R.string.ask_effort_medium
     Effort.HIGH -> R.string.ask_effort_high
+    else -> dobra.app.ai.effortLabel(effort)
 }
 
 @Composable

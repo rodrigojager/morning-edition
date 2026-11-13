@@ -100,6 +100,33 @@ class ProviderRegistry(private val storage: BlobStorage, private val cipher: Sec
         save(current.copy(choices = if (choice == null) current.choices - job else current.choices + (job to choice)))
     }
 
+    /** A model and its options belong to one provider; never carry them to a different account. */
+    fun selectProvider(job: AiJob, providerId: String) {
+        if (_state.value.choices[job]?.providerId == providerId) return
+        if (_state.value.providers.none { it.id == providerId }) return
+        choose(job, JobChoice(providerId, "", Effort.AUTO))
+    }
+
+    fun selectModel(job: AiJob, model: String) {
+        val choice = _state.value.choices[job] ?: return
+        if (choice.model == model) return
+        if (_state.value.providers.none { it.id == choice.providerId }) return
+        choose(job, choice.copy(model = model, effort = Effort.AUTO, serviceTier = null,
+            effortMode = EffortMode.THINKING_BUDGET))
+    }
+
+    fun selectModel(job: AiJob, model: ModelOption) {
+        val choice = _state.value.choices[job] ?: return
+        if (choice.model == model.id && choice.effortMode == model.effortMode) return
+        choose(job, choice.copy(model = model.id, effort = Effort.AUTO, serviceTier = null, effortMode = model.effortMode))
+    }
+
+    fun applyToAllJobs(job: AiJob) {
+        val current = _state.value
+        val choice = current.choices[job]?.takeIf { it.model.isNotBlank() } ?: return
+        save(current.copy(choices = AiJob.entries.associateWith { choice }))
+    }
+
     /** The plain key, for making a call. Null when the provider is unknown. */
     fun key(id: String): String? =
         storage.read(keyBlob(id))?.let { cipher.decrypt(Base64.decode(it)).decodeToString() }

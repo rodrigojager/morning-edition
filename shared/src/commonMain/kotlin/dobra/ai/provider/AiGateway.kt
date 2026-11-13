@@ -18,7 +18,8 @@ class AiGateway(
             ?: throw AiException.NotConfigured("provider ${choice.providerId} was removed")
         if (choice.model.isBlank()) throw AiException.NotConfigured("no model chosen for $job")
         val client = clientOf(config)
-        val answer = client.complete(request.copy(model = choice.model, effort = choice.effort))
+        val answer = client.complete(request.copy(model = choice.model, effort = choice.effort,
+            serviceTier = choice.serviceTier, effortMode = choice.effortMode))
         ledger.record(
             UsageRecord(
                 editionKey = editionKey,
@@ -40,6 +41,12 @@ class AiGateway(
         val config = registry.state.value.providers.firstOrNull { it.id == providerId }
             ?: throw AiException.NotConfigured("unknown provider")
         return clientOf(config).listModels()
+    }
+
+    suspend fun modelOptions(providerId: String): List<ModelOption> {
+        val config = registry.state.value.providers.firstOrNull { it.id == providerId }
+            ?: throw AiException.NotConfigured("unknown provider")
+        return clientOf(config).modelOptions()
     }
 
     private suspend fun clientOf(config: ProviderConfig): ModelClient {

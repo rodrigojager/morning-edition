@@ -8,6 +8,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -20,12 +21,15 @@ interface ModelClient {
 
     /** Ids of the models the account can use. */
     suspend fun listModels(): List<String>
+
+    suspend fun modelOptions(): List<ModelOption> = listModels().distinct().map { ModelOption(it) }
 }
 
 fun clientFor(config: ProviderConfig, key: String, transport: HttpTransport): ModelClient = when (config.kind) {
     ProviderKind.OPENAI_STYLE -> OpenAiStyleClient(transport, config.baseUrl, key)
     ProviderKind.ANTHROPIC -> AnthropicClient(transport, config.baseUrl, key)
     ProviderKind.CHATGPT_OAUTH -> throw AiException.NotConfigured("use the ChatGPT session client")
+    ProviderKind.OPENCODE -> OpenCodeClient(transport, config.baseUrl, key)
 }
 
 private val wire = Json { ignoreUnknownKeys = true }
@@ -58,7 +62,8 @@ private fun JsonElement?.long(): Long = (this as? JsonPrimitive)?.longOrNull ?: 
 
 private fun idsOf(body: String): List<String> {
     val data = parseObject(body)["data"] as? JsonArray ?: throw AiException.BadAnswer("no model list")
-    return data.mapNotNull { (it as? JsonObject)?.get("id")?.jsonPrimitive?.contentOrNull }
+    return data.mapNotNull { ((it as? JsonObject)?.get("id") as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) }
+        .distinct()
 }
 
 /** Chat completions: OpenAI, DeepSeek and compatible endpoints. [baseUrl] already holds the version path, if any. */
@@ -80,7 +85,8 @@ class OpenAiStyleClient(
                     add(buildJsonObject { put("role", "user"); put("content", request.user) })
                 },
             )
-            request.effort?.let { put("reasoning_effort", it.name.lowercase()) }
+            request.effort?.takeUnless { it == Effort.AUTO }?.let { put("reasoning_effort", it.name.lowercase()) }
+            request.serviceTier?.let { put("service_tier", it) }
             request.maxOutputTokens?.let { put("max_tokens", it) }
             // JSON mode: documented by OpenAI and by DeepSeek (its only structured option) as {"type": "json_object"}.
             if (request.jsonOutput) put("response_format", buildJsonObject { put("type", "json_object") })
@@ -111,7 +117,14 @@ class AnthropicClient(
         // [AiRequest.jsonOutput] has no plain switch here: Anthropic's structured outputs take a full schema in a
         // subset (no oneOf, every object closed) that a magazine's format schema is not, so the prompt describes the
         // JSON and the caller validates the answer.
-        val budget = request.effort?.let { THINKING_BUDGET.getValue(it) }
+        val outputEffort = request.effortMode == EffortMode.OUTPUT_CONFIG
+        val budget = request.effort?.takeUnless { outputEffort }?.let { effort ->
+            when (effort) {
+                Effort.AUTO, Effort.NONE -> null
+                else -> THINKING_BUDGET[effort]
+                    ?: throw AiException.NotConfigured("unsupported Anthropic thinking effort")
+            }
+        }
         val body = buildJsonObject {
             put("model", request.model)
             // The thinking budget must stay below max_tokens, so the answer's own room is added on top of it.
@@ -123,6 +136,13 @@ class AnthropicClient(
             )
             if (budget != null) {
                 put("thinking", buildJsonObject { put("type", "enabled"); put("budget_tokens", budget) })
+            }
+            if (outputEffort) request.effort?.takeUnless { it == Effort.AUTO }?.let {
+                put("output_config", buildJsonObject { put("effort", it.name.lowercase()) })
+            }
+            request.serviceTier?.let {
+                if (it != "fast" && it != "standard") throw AiException.NotConfigured("unsupported Anthropic speed")
+                put("speed", it)
             }
         }
         val response = transport.send(HttpRequest("POST", "$base/messages", headers, body.toString())).orThrow()
@@ -137,12 +157,51 @@ class AnthropicClient(
         return ModelAnswer(text, TokenUsage(usage?.get("input_tokens").long(), usage?.get("output_tokens").long()))
     }
 
-    override suspend fun listModels(): List<String> =
-        idsOf(transport.send(HttpRequest("GET", "$base/models", headers)).orThrow().body)
+    override suspend fun listModels(): List<String> = modelOptions().map { it.id }
+
+    override suspend fun modelOptions(): List<ModelOption> {
+        val models = mutableListOf<ModelOption>()
+        val seenCursors = mutableSetOf<String>()
+        var cursor: String? = null
+        do {
+            // Anthropic model ids are URL-safe; reject unexpected cursors rather than composing an arbitrary URL.
+            val suffix = cursor?.let { "?after_id=$it" }.orEmpty()
+            val page = parseObject(transport.send(HttpRequest("GET", "$base/models$suffix", headers)).orThrow().body)
+            val data = page["data"] as? JsonArray ?: throw AiException.BadAnswer("no model list")
+            for (entry in data) {
+                val item = entry as? JsonObject ?: continue
+                val id = (item["id"] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() } ?: continue
+                if ((item["lifecycle"] as? JsonPrimitive)?.contentOrNull == "retired") continue
+                val capability = (item["capabilities"] as? JsonObject)?.get("effort") as? JsonObject
+                val supported = (capability?.get("supported") as? JsonPrimitive)?.booleanOrNull
+                val efforts = when (supported) {
+                    true -> listOf(Effort.LOW, Effort.MEDIUM, Effort.HIGH, Effort.XHIGH, Effort.MAX).filter {
+                        val level = capability[it.name.lowercase()] as? JsonObject
+                        (level?.get("supported") as? JsonPrimitive)?.booleanOrNull == true
+                    }
+                    false -> emptyList()
+                    null -> null
+                }
+                models += ModelOption(id, (item["display_name"] as? JsonPrimitive)?.contentOrNull?.takeIf(String::isNotBlank) ?: id,
+                    efforts, serviceTiers = if (id in FAST_MODELS) listOf(ServiceTier("fast", "Fast")) else emptyList(),
+                    effortMode = if (supported == true) EffortMode.OUTPUT_CONFIG else EffortMode.THINKING_BUDGET)
+            }
+            val next = (page["last_id"] as? JsonPrimitive)?.contentOrNull
+            val more = (page["has_more"] as? JsonPrimitive)?.booleanOrNull == true
+            if (more && (next == null || !next.matches(Regex("[A-Za-z0-9._-]+")) || !seenCursors.add(next))) {
+                throw AiException.BadAnswer("invalid model pagination")
+            }
+            cursor = if (more) next else null
+        } while (cursor != null)
+        return models.distinctBy { it.id }
+    }
 
     private companion object {
         const val VERSION = "2023-06-01"
         const val DEFAULT_MAX = 4096
+        // Generally available fast-mode model ids; preview/deprecated models need a separate beta contract.
+        // https://platform.claude.com/docs/en/build-with-claude/fast-mode
+        val FAST_MODELS = setOf("claude-opus-5-5", "claude-fable-5-2", "claude-mythos-5-2")
         val THINKING_BUDGET = mapOf(Effort.LOW to 1024, Effort.MEDIUM to 4096, Effort.HIGH to 16000)
     }
 }

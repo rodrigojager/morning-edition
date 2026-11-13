@@ -53,6 +53,46 @@ class ChatGptClientTest {
     }
 
     @Test
+    fun accountCatalogKeepsNamesAndOnlyRecognizedCapabilities() = runTest {
+        val catalog = """{"models":[
+            {"slug":"first","display_name":"Account model","visibility":"list",
+             "supported_reasoning_levels":[{"effort":"low"},{"effort":"xhigh"},{"effort":"future"}],
+             "service_tiers":[{"id":"fast","name":"Fast"},{"id":""},null]},
+            {"slug":"hidden","visibility":"hide"},
+            {"slug":"fallback","visibility":"list"},
+            {"slug":"first","visibility":"list"},
+            {"slug":"","visibility":"list"}]}"""
+        val client = ChatGptClient(ReplayTransport(mutableListOf(reply(200, catalog)))) { "synthetic" }
+        assertEquals(listOf(
+            ModelOption("first", "Account model", listOf(Effort.LOW, Effort.XHIGH), listOf(ServiceTier("fast", "Fast"))),
+            ModelOption("fallback"),
+        ), client.modelOptions())
+    }
+
+    @Test
+    fun jobOptionsSurviveRestartAndReachResponsesWhileAutomaticOmitsThem() = runTest {
+        val storage = MemoryBlobStorage()
+        val registry = ProviderRegistry(storage, ReverseCipher())
+        val provider = registry.addChatGpt()
+        registry.choose(AiJob.ANSWER, JobChoice(provider.id, "chosen-model", Effort.XHIGH, "fast"))
+        val restored = ProviderRegistry(storage, ReverseCipher())
+        val transport = ReplayTransport(mutableListOf(reply(200, completed), reply(200, completed)))
+        val gateway = AiGateway(restored, transport, UsageLedger(storage),
+            oauthClient = { ChatGptClient(transport) { "synthetic-session" } })
+        gateway.call(AiJob.ANSWER, AiRequest("ignored", "test", effort = Effort.LOW, serviceTier = "ignored"))
+        val sent = Json.parseToJsonElement(transport.sent.last().body!!).jsonObject
+        assertEquals("chosen-model", sent.getValue("model").jsonPrimitive.content)
+        assertEquals("xhigh", sent.getValue("reasoning").jsonObject.getValue("effort").jsonPrimitive.content)
+        assertEquals("fast", sent.getValue("service_tier").jsonPrimitive.content)
+
+        restored.choose(AiJob.ANSWER, JobChoice(provider.id, "chosen-model", Effort.AUTO))
+        gateway.call(AiJob.ANSWER, AiRequest("ignored", "test", effort = Effort.HIGH, serviceTier = "fast"))
+        val automatic = Json.parseToJsonElement(transport.sent.last().body!!).jsonObject
+        assertFalse("reasoning" in automatic)
+        assertFalse("service_tier" in automatic)
+    }
+
+    @Test
     fun gatewayRoutesOauthWithoutAKeyAndPreservesOtherProviders() = runTest {
         val storage = MemoryBlobStorage()
         val registry = ProviderRegistry(storage, ReverseCipher())

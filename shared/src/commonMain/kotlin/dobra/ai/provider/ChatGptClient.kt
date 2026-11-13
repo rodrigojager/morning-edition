@@ -6,7 +6,9 @@ import kotlinx.serialization.json.*
 class ChatGptClient(private val transport: HttpTransport, private val token: suspend () -> String) : ModelClient {
     private suspend fun headers() = mapOf("authorization" to "Bearer ${token()}", "content-type" to "application/json")
 
-    override suspend fun listModels(): List<String> {
+    override suspend fun listModels(): List<String> = modelOptions().map { it.id }
+
+    override suspend fun modelOptions(): List<ModelOption> {
         val response = transport.send(HttpRequest("GET", "$BASE/models", headers())).orThrow()
         val catalog = try { Json.parseToJsonElement(response.body).jsonObject } catch (_: Exception) {
             throw AiException.BadAnswer("invalid ChatGPT model catalog")
@@ -15,9 +17,19 @@ class ChatGptClient(private val transport: HttpTransport, private val token: sus
             ?: throw AiException.BadAnswer("no ChatGPT model catalog")
         return models.mapNotNull {
             val model = it as? JsonObject ?: return@mapNotNull null
-            if ((model["visibility"] as? JsonPrimitive)?.contentOrNull == "list")
-                (model["slug"] as? JsonPrimitive)?.contentOrNull?.takeIf { slug -> slug.isNotBlank() } else null
-        }
+            if (model.text("visibility") != "list") return@mapNotNull null
+            val id = model.text("slug")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+            val efforts = (model["supported_reasoning_levels"] as? JsonArray)?.mapNotNull { preset ->
+                val value = (preset as? JsonObject)?.text("effort") ?: return@mapNotNull null
+                Effort.entries.firstOrNull { it != Effort.AUTO && it.name.equals(value, ignoreCase = true) }
+            }?.distinct()
+            val tiers = (model["service_tiers"] as? JsonArray).orEmpty().mapNotNull { entry ->
+                val tier = entry as? JsonObject ?: return@mapNotNull null
+                val tierId = tier.text("id")?.takeIf(String::isNotBlank) ?: return@mapNotNull null
+                ServiceTier(tierId, tier.text("name")?.takeIf(String::isNotBlank) ?: tierId)
+            }.distinctBy { it.id }
+            ModelOption(id, model.text("display_name")?.takeIf(String::isNotBlank) ?: id, efforts, tiers)
+        }.distinctBy { it.id }
     }
 
     override suspend fun complete(request: AiRequest): ModelAnswer {
@@ -29,7 +41,10 @@ class ChatGptClient(private val transport: HttpTransport, private val token: sus
             put("input", buildJsonArray {
                 add(buildJsonObject { put("role", "user"); put("content", request.user) })
             })
-            request.effort?.let { put("reasoning", buildJsonObject { put("effort", it.name.lowercase()) }) }
+            request.effort?.takeUnless { it == Effort.AUTO }?.let {
+                put("reasoning", buildJsonObject { put("effort", it.name.lowercase()) })
+            }
+            request.serviceTier?.let { put("service_tier", it) }
             if (request.jsonOutput) put("text", buildJsonObject {
                 put("format", buildJsonObject { put("type", "json_object") })
             })
@@ -82,3 +97,5 @@ class ChatGptClient(private val transport: HttpTransport, private val token: sus
         }
     }
 }
+
+private fun JsonObject.text(key: String) = (this[key] as? JsonPrimitive)?.contentOrNull
