@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon foreground: a page with its top corner folded (the "dobra"), inside the 66 dp safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The page, its top right corner cut where it folds. -->
+    <path
+        android:fillColor="#1B1A17"
+        android:pathData="M34,28 L62,28 L76,42 L76,80 L34,80 Z" />
+    <!-- The folded corner in the accent colour. -->
+    <path
+        android:fillColor="#C2311D"
+        android:pathData="M62,28 L62,42 L76,42 Z" />
+    <!-- Lines of text. -->
+    <path
+        android:fillColor="#FAF6EE"
+        android:pathData="M40,48 L70,48 L70,51 L40,51 Z M40,56 L70,56 L70,59 L40,59 Z M40,64 L70,64 L70,67 L40,67 Z M40,72 L60,72 L60,75 L40,75 Z" />
+    <path
+        android:fillColor="#FAF6EE"
+        android:pathData="M40,36 L56,36 L56,41 L40,41 Z" />
+</vector>

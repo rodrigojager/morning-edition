@@ -77,6 +77,16 @@ Collectors (one TypeScript script per source) run in `shared/.../dobra/collect/e
   (`EditionNotices.EXTRA_OPEN_EDITION` read by `MainActivity`). The permission to notify (Android 13+) is asked once,
   the first time the reader opens "Geração de edições"; without it, editions are still made silently.
 
+## Release build
+
+- `gradlew :androidApp:assembleRelease`: R8 minify + optimize + resource shrinking (`androidApp/proguard-rules.pro`
+  keeps the JNI-bound QuickJS and bundled SQLite classes, the generated serializers and the WorkManager job).
+- Signing: PKCS12 keystore and `release-signing.properties` in the secrets folder (`DOBRA_SECRETS`, else
+  `-Pdobra.secretsDir`, else `../_secrets`); `checkReleaseSigning` fails the release build when they are missing.
+  Never copy the keystore or its passwords into this repository.
+- The R8 build has only been checked by building and signing; it has not run on a device here. After changing keep
+  rules or adding a library used by reflection or JNI, try the release APK on a phone.
+
 ## Conventions
 - Kotlin, official code style (`kotlin.code.style=official`), 4-space indentation, 120-column lines.
 - Code, identifiers, comments, commit messages and documents are English. Text the reader sees is Brazilian
