@@ -2,6 +2,7 @@ package dobra.app.shell
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -77,6 +78,7 @@ fun AppShell(
     desk: dobra.app.library.CollectorDesk? = null,
     generation: dobra.app.work.Generation? = null,
     magazines: List<dobra.model.Magazine> = emptyList(),
+    noEdition: Boolean = false,
 ) {
     AppTheme(settings.theme, settings.textSize.toFloat()) {
         val colors = LocalReaderColors.current
@@ -95,7 +97,9 @@ fun AppShell(
         val body: @Composable () -> Unit = {
                 holder.SaveableStateProvider(tab) {
                     when (tab) {
-                        Routes.EDITION -> if (data == null) LoadingContent() else ReaderScreen(
+                        Routes.EDITION -> if (data == null) {
+                            if (noEdition) NoEditionContent(onLibrary = { tab = Routes.LIBRARY }) else LoadingContent()
+                        } else ReaderScreen(
                             magazine = data.magazine,
                             edition = data.edition,
                             mode = settings.readingMode,
@@ -224,6 +228,33 @@ fun LoadingPage() {
             fontFamily = AppFonts.display,
             fontSize = 20.sp,
         )
+    }
+}
+
+/** The Edição tab when the magazine has no edition (none made yet, or the reader deleted it). */
+@Composable
+private fun NoEditionContent(onLibrary: () -> Unit) {
+    val colors = LocalReaderColors.current
+    Box(Modifier.fillMaxSize().statusBarsPadding().padding(24.dp).testTag("no-edition"), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text(
+                stringResource(R.string.no_edition),
+                color = colors.ink2,
+                fontFamily = AppFonts.text,
+                fontSize = 17.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Text(
+                stringResource(R.string.no_edition_library),
+                color = colors.accent,
+                fontFamily = AppFonts.mono,
+                fontSize = 13.sp,
+                modifier = Modifier
+                    .testTag("no-edition-library")
+                    .clickable(role = Role.Button, onClick = onLibrary)
+                    .padding(12.dp),
+            )
+        }
     }
 }
 

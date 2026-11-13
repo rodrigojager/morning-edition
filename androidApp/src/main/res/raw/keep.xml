@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resource shrinking must keep the fonts' licence: the SIL Open Font License requires it to ship with the fonts. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@raw/fonts_license" />

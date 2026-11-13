@@ -8,4 +8,6 @@
     <string name="tab_sources">Fontes</string>
     <string name="tab_settings">Ajustes</string>
     <string name="loading">Abrindo a edição…</string>
+    <string name="no_edition">Esta revista não tem nenhuma edição por enquanto.</string>
+    <string name="no_edition_library">Ir para a Biblioteca</string>
 </resources>

@@ -14,6 +14,8 @@ import dobra.model.Edition
 import dobra.model.Magazine
 import dobra.store.EditionSummary
 import dobra.store.Store
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /** Route names of the app: the five tabs. Each feature adds its routes here. */
@@ -48,6 +50,13 @@ fun AppNav(container: AppContainer, open: String? = null, onOpened: () -> Unit =
         }
     }
     val magazine = magazines?.let { list -> list.firstOrNull { it.id == openKey?.substringBefore('/') } ?: list.firstOrNull() }
+    // No magazine at all, or a magazine whose editions were all deleted (or never made): the Edição tab says so.
+    val noEdition by remember(magazine?.id, magazines == null) {
+        when {
+            magazine != null -> s.editions.observe(magazine.id).map { it.isEmpty() }
+            else -> flowOf(magazines?.isEmpty() == true)
+        }
+    }.collectAsState(initial = false)
     val current = settings
     if (current == null) {
         LoadingPage()
@@ -65,6 +74,7 @@ fun AppNav(container: AppContainer, open: String? = null, onOpened: () -> Unit =
         desk = container.desk,
         generation = container.generation,
         magazines = magazines.orEmpty(),
+        noEdition = noEdition,
     )
 }
 

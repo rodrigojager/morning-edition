@@ -65,6 +65,22 @@ class AppShellTest {
     }
 
     @Test
+    fun withNoEditionTheEditionTabSaysSoAndLeadsToTheLibrary() {
+        compose.setContent { AppShell(null, DeviceSettings(), onSettings = {}, noEdition = true) }
+        compose.onNodeWithTag("no-edition").assertExists()
+        compose.onNode(hasText("Esta revista não tem nenhuma edição por enquanto.")).assertExists()
+        compose.onNodeWithTag("no-edition-library").performClick()
+        compose.onNodeWithTag("screen-library").assertExists()
+    }
+
+    @Test
+    fun whileTheEditionLoadsTheTabSaysItIsOpening() {
+        compose.setContent { AppShell(null, DeviceSettings(), onSettings = {}) }
+        compose.onNode(hasText("Abrindo a edição…")).assertExists()
+        compose.onNodeWithTag("no-edition").assertDoesNotExist()
+    }
+
+    @Test
     fun themesChangeThePageBackground() {
         var settings by mutableStateOf(DeviceSettings())
         compose.setContent {
