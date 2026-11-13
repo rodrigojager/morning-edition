@@ -4,6 +4,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,7 +68,7 @@ fun LibraryScreen(
     var page by rememberSaveable { mutableStateOf(LIST) }
     val go: (String) -> Unit = { page = it }
     when {
-        page == LIST -> LibraryList(store, go)
+        page == LIST -> LibraryList(store, go, maker, onOpenEdition)
         page == NEW -> MagazineForm(store, null, go)
         page.startsWith("form:") -> MagazineForm(store, page.removePrefix("form:"), go)
         page.startsWith("prompt:") -> PromptForm(store, page.removePrefix("prompt:"), go)
@@ -73,7 +83,7 @@ fun LibraryScreen(
 // ---- the list ----
 
 @Composable
-private fun LibraryList(store: Store, go: (String) -> Unit) {
+private fun LibraryList(store: Store, go: (String) -> Unit, maker: MakeRunner?, onOpenEdition: (String) -> Unit) {
     val magazines by remember(store) { store.magazines.observeAll() }.collectAsState(initial = null)
     val saved by remember(store) { store.marks.observeSaved() }.collectAsState(initial = emptyList())
     LibraryPage("screen-library") {
@@ -85,16 +95,22 @@ private fun LibraryList(store: Store, go: (String) -> Unit) {
             Empty(stringResource(R.string.library_empty_title), stringResource(R.string.library_empty_body), "library-empty")
         }
         list.orEmpty().forEach { m ->
-            MagazineCard(store, m, saved.count { it.key.startsWith(m.id + "/") }, go)
+            MagazineCard(store, m, saved.count { it.key.startsWith(m.id + "/") }, go, maker, onOpenEdition)
         }
         Btn(stringResource(R.string.library_new), "new-magazine", primary = true) { go(NEW) }
     }
 }
 
 @Composable
-private fun MagazineCard(store: Store, m: Magazine, savedCount: Int, go: (String) -> Unit) {
+private fun MagazineCard(store: Store, m: Magazine, savedCount: Int, go: (String) -> Unit, maker: MakeRunner?, onOpenEdition: (String) -> Unit) {
     val editions by remember(m.id) { store.editions.observe(m.id) }.collectAsState(initial = emptyList())
     val unread by remember(m.id) { store.unread.observe(m.id) }.collectAsState(initial = 0)
+    var expanded by rememberSaveable(m.id) { mutableStateOf(false) }
+    val unreadKeys by produceState(emptySet<String>(), editions, unread) {
+        value = editions.filter { e ->
+            !store.marks.isEditionRead(e.key) && e.storyIds.any { it !in store.marks.readStories(e.key) }
+        }.map { it.key }.toSet()
+    }
     Card("mag-card-${m.id}") {
         Kicker(cadenceText(m))
         Text(
@@ -105,9 +121,38 @@ private fun MagazineCard(store: Store, m: Magazine, savedCount: Int, go: (String
             modifier = Modifier.testTag("mag-name-${m.id}"),
         )
         if (m.about.isNotBlank()) Body(m.about)
-        Chips(m.topics.take(8).map { it.name }, "mag-topics-${m.id}")
-        Meta(countsLine(editions.size, unread, savedCount, m.sources.size), "mag-counts-${m.id}")
-        BtnRow { Btn(stringResource(R.string.library_open_page), "mag-open-${m.id}") { go("mag:${m.id}") } }
+        if (editions.isNotEmpty()) {
+            Row(Modifier.horizontalScroll(rememberScrollState()).testTag("mag-editions-${m.id}"), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                editions.forEach { e ->
+                    val colors = LocalReaderColors.current
+                    Column(
+                        Modifier.width(132.dp).border(BorderStroke(1.dp, colors.rule), RoundedCornerShape(6.dp))
+                            .testTag("mag-edition-${e.key}")
+                            .clickable(role = Role.Button) { onOpenEdition(e.key) }.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Kicker(stringResource(R.string.edition_mini_number, e.number))
+                        Meta(e.date)
+                        Meta(countOf(e.storyIds.size, R.string.count_stories_one, R.string.count_stories_many))
+                        if (e.key in unreadKeys) Kicker(stringResource(R.string.edition_unread_badge))
+                        else Meta(stringResource(R.string.edition_read))
+                    }
+                }
+            }
+        } else Meta(stringResource(R.string.editions_none_title))
+        if (maker != null) MakeNow(m, maker, onOpenEdition, compact = true)
+        BtnRow {
+            Btn(stringResource(R.string.magazine_edit), "mag-edit-${m.id}") { go("form:${m.id}") }
+            Btn(stringResource(R.string.library_open_page), "mag-open-${m.id}") { go("mag:${m.id}") }
+            Btn(stringResource(if (expanded) R.string.mag_details_hide else R.string.mag_details_show), "mag-details-${m.id}") { expanded = !expanded }
+        }
+        if (expanded) {
+            Meta(countsLine(editions.size, unread, savedCount, m.sources.size), "mag-counts-${m.id}")
+            Kicker(stringResource(R.string.recipe_subjects))
+            Chips(m.topics.map { it.name }, "mag-topics-${m.id}")
+            Kicker(stringResource(R.string.recipe_keywords))
+            if (m.keywords.isEmpty()) Meta(stringResource(R.string.recipe_none)) else Chips(m.keywords, "mag-keywords-${m.id}")
+        }
     }
 }
 

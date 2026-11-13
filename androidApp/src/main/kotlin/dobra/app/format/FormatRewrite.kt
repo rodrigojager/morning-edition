@@ -7,6 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import dobra.app.R
 import dobra.app.library.Body
+import dobra.app.library.ActivityProgress
 import dobra.app.library.Btn
 import dobra.app.library.BtnRow
 import dobra.app.library.LeftOutList
@@ -39,10 +40,11 @@ internal fun RewriteSection(magazine: Magazine, edition: Edition, maker: MakeRun
         }
     }
     when (s) {
-        is RunState.Running -> Meta(
+        is RunState.Running -> ActivityProgress(
             if (s.progress.stage == MakeStage.SAVING) stringResource(R.string.make_saving)
             else stringResource(R.string.rewrite_running, s.progress.done, s.progress.total),
             "format-rewrite-progress",
+            s.progress,
         )
         is RunState.Missing -> Body(missingText(s.what), "format-rewrite-missing")
         is RunState.Failed -> Body(failText(s), "format-rewrite-failure")

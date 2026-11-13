@@ -14,6 +14,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.material3.Surface
+import dobra.app.shell.AppTheme
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import dobra.app.edition.EditionFixture
 import dobra.app.shell.AppShell
@@ -48,6 +53,7 @@ class LibraryScreenTest {
     private val id = EditionFixture.magazine.id
     private val key = EditionFixture.edition.key
     private var opened: String? = null
+    private var previewView: android.view.View? = null
 
     @After
     fun close() {
@@ -55,7 +61,10 @@ class LibraryScreenTest {
         root.deleteRecursively()
     }
 
-    private fun showLibrary() = compose.setContent { LibraryScreen(store) { opened = it } }
+    private fun showLibrary() = compose.setContent {
+        previewView = LocalView.current
+        AppTheme { Surface { LibraryScreen(store) { opened = it } } }
+    }
 
     private fun tag(t: String): SemanticsNodeInteraction {
         compose.waitUntil(5_000) { compose.onAllNodesWithTag(t).fetchSemanticsNodes().isNotEmpty() }
@@ -73,11 +82,29 @@ class LibraryScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h891dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     fun libraryCardShowsCadenceSubjectsAndCountsUntilTheEditionIsRead() {
         showLibrary()
         tag("mag-card-$id")
         tag("mag-name-$id").assertTextEquals("Primeira Dobra")
         compose.onNode(hasText("Diária, às 7h") and hasAnyAncestor(hasTestTag("mag-card-$id"))).assertExists()
+        assertTrue(compose.onAllNodesWithTag("mag-topics-$id").fetchSemanticsNodes().isEmpty())
+        tag("mag-edition-$key")
+        compose.waitUntil(5_000) {
+            runCatching {
+                compose.onNode(hasText("● NÃO LIDA") and hasAnyAncestor(hasTestTag("mag-edition-$key")), useUnmergedTree = true).assertExists()
+            }.isSuccess
+        }
+        System.getenv("DOBRA_READER_PREVIEWS")?.let { directory ->
+            compose.runOnIdle {
+                val view = checkNotNull(previewView)
+                val bitmap = android.graphics.Bitmap.createBitmap(view.width, view.height, android.graphics.Bitmap.Config.ARGB_8888)
+                view.draw(android.graphics.Canvas(bitmap))
+                java.io.File(directory, "library.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+            }
+        }
+        click("mag-details-$id")
         compose.onNode(hasText("IA e agentes") and hasAnyAncestor(hasTestTag("mag-topics-$id"))).assertExists()
         compose.waitUntil(5_000) {
             runCatching { compose.onNodeWithTag("mag-counts-$id").assertTextEquals("1 edição · 1 por ler · 0 itens salvos · 10 fontes") }.isSuccess
@@ -86,6 +113,16 @@ class LibraryScreenTest {
         compose.waitUntil(5_000) {
             runCatching { compose.onNodeWithTag("mag-counts-$id").assertTextEquals("1 edição · nenhuma por ler · 0 itens salvos · 10 fontes") }.isSuccess
         }
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithTag("mag-edition-$key").fetchSemanticsNodes().isNotEmpty() &&
+                runCatching { compose.onNode(hasText("lida") and hasAnyAncestor(hasTestTag("mag-edition-$key")), useUnmergedTree = true).assertExists() }.isSuccess
+        }
+        click("mag-edition-$key")
+        assertEquals(key, opened)
+        click("mag-details-$id")
+        gone("mag-topics-$id")
+        click("mag-edit-$id")
+        tag("field-name").assertTextEquals("Primeira Dobra")
     }
 
     @Test
@@ -134,6 +171,7 @@ class LibraryScreenTest {
         click("form-save")
         tag("mag-card-mesa-de-musica")
         tag("mag-name-mesa-de-musica").assertTextEquals("Mesa de Música")
+        click("mag-details-mesa-de-musica")
         tag("mag-counts-mesa-de-musica").assertTextEquals("0 edições · nenhuma por ler · 0 itens salvos · 0 fontes")
         compose.onNode(hasText("Semanal, às 18h") and hasAnyAncestor(hasTestTag("mag-card-mesa-de-musica"))).assertExists()
 

@@ -1,5 +1,7 @@
 package dobra.ai.provider
 
+import kotlinx.coroutines.delay
+
 /**
  * The one way the app calls a model: a job names its provider and model in the settings, the call goes through the
  * matching client, and every successful call is recorded with its tokens and cost.
@@ -18,8 +20,9 @@ class AiGateway(
             ?: throw AiException.NotConfigured("provider ${choice.providerId} was removed")
         if (choice.model.isBlank()) throw AiException.NotConfigured("no model chosen for $job")
         val client = clientOf(config)
-        val answer = client.complete(request.copy(model = choice.model, effort = choice.effort,
-            serviceTier = choice.serviceTier, effortMode = choice.effortMode))
+        val chosenRequest = request.copy(model = choice.model, effort = choice.effort,
+            serviceTier = choice.serviceTier, effortMode = choice.effortMode)
+        val answer = completeWithRecovery(client, chosenRequest)
         ledger.record(
             UsageRecord(
                 editionKey = editionKey,
@@ -34,6 +37,20 @@ class AiGateway(
             ),
         )
         return answer
+    }
+
+    /** Retry only transport failures, at most twice. A lost response may still have been billed by the provider. */
+    private suspend fun completeWithRecovery(client: ModelClient, request: AiRequest): ModelAnswer {
+        var retries = 0
+        while (true) {
+            try {
+                return client.complete(request)
+            } catch (e: AiException.Unreachable) {
+                if (retries == 2) throw e
+                delay(1_000L shl retries)
+                retries++
+            }
+        }
     }
 
     /** The models a provider offers to its account. */

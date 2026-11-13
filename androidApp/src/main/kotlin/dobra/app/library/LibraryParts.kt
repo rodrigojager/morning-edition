@@ -118,7 +118,7 @@ internal fun Chips(items: List<String>, tag: String? = null) {
 
 /** A button drawn as text in a frame; [primary] fills it with the accent colour. */
 @Composable
-internal fun Btn(label: String, tag: String, primary: Boolean = false, onClick: () -> Unit) {
+internal fun Btn(label: String, tag: String, primary: Boolean = false, enabled: Boolean = true, onClick: () -> Unit) {
     val colors = LocalReaderColors.current
     val shape = RoundedCornerShape(6.dp)
     Box(
@@ -128,7 +128,7 @@ internal fun Btn(label: String, tag: String, primary: Boolean = false, onClick: 
             .border(BorderStroke(1.dp, if (primary) colors.accent else colors.rule), shape)
             .testTag(tag)
             .semantics { role = Role.Button }
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {

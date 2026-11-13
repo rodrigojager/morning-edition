@@ -26,7 +26,7 @@ names. The folder is taken from the environment variable `DOBRA_SECRETS`, else t
 `dobra.secretsDir`, else `../_secrets` next to the repository. Without it the release build stops with a message
 saying what is missing.
 
-Release 0.3.1: `androidApp-release.apk`, version code 4, minSdk 28 (Android 9), targetSdk 35.
+Release 0.3.2: `androidApp-release.apk`, version code 5, minSdk 28 (Android 9), targetSdk 35.
 
 ## Magazine instructions and editions
 
@@ -34,6 +34,19 @@ Open a magazine in **Biblioteca**. **Gerar edição agora**, **Editar instruçõ
 edition list appear before the recipe's source cards. Each edition offers **Abrir**, a read/unread mark and
 **Apagar edição**, with confirmation. Editing instructions saves the recipe for subsequent generations; it does
 not rewrite existing editions. The dedicated instructions editor preserves the rest of the current recipe.
+
+The library also offers generation and editing directly on each magazine card. A horizontal shelf of edition
+cards opens saved editions immediately and shows unread badges. Subjects, keywords and detailed counts expand
+under **Ver detalhes**. Generation stays visible when moving between the library and the magazine page, with a
+spinner and source-count progress during collection, indeterminate selection, then article-count progress during
+writing. The total number of articles is known only after selection; bars describe each phase, not estimated time.
+Collector generation and format rewriting also show activity. The cover keeps its lead near the masthead, with
+a source image when available or a locally drawn illustration; compact screens prioritize the lead text.
+
+AI transport failures receive at most two additional attempts with short delays; authentication, rate limits,
+invalid answers and cancellations are not automatically retried. If writing still fails, the omitted article's
+reason explains that it may be selected in a subsequent edition. An omitted article is not marked as published.
+Usage totals count received successful answers; a provider may still bill a request whose response was lost.
 
 The starter recipe asks for practical tools, SDKs, CLIs, MCPs, skills, libraries, applications and services, excluding
 opinion articles and predictions. Community, free and open-source projects are preferences, not requirements.
@@ -64,6 +77,10 @@ Before asking the AI to write a collector, Kotlin code discovers feed/JSON links
 and reads at most two allowed addresses once each. Bounded evidence includes those responses and embedded JSON,
 even when it occurs beyond the raw HTML prefix shown to the AI. The existing source-domain restriction remains.
 Discovery does not guess endpoints, execute site JavaScript or automate a browser. HTTP 403/429 stops discovery.
+The collector prompt also incorporates the observed-endpoint and capture-reuse approach explored in
+[Reverse API Engineer](https://github.com/kalil0321/reverse-api-engineer): inspect actual response fields and
+explicit next links, validate real items rather than HTTP success, and repair from the same saved evidence.
+This is a prompt adaptation, without installing its Python/browser tooling or copying session credentials.
 If acceptance finds a new response while warming up a generated script, the next repair prompt includes that
 response and the actual failure. Scripts are saved only after two matching, valid runs against the saved copy.
 

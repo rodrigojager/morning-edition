@@ -20,18 +20,23 @@ import java.util.Locale
  * saving), then the new edition with a way to open it, or what is missing or went wrong, and what was left out.
  */
 @Composable
-internal fun MakeNow(magazine: Magazine, runner: MakeRunner, onOpenEdition: (String) -> Unit) {
+internal fun MakeNow(magazine: Magazine, runner: MakeRunner, onOpenEdition: (String) -> Unit, compact: Boolean = false) {
     val state by remember(magazine.id, runner) { runner.makeState(magazine.id) }.collectAsState(initial = RunState.Idle)
-    Body(stringResource(R.string.make_hint))
-    BtnRow { Btn(stringResource(R.string.make_now), "make-now", primary = true) { runner.make(magazine) } }
+    val tag = if (compact) "make-${magazine.id}" else "make"
+    if (!compact) Body(stringResource(R.string.make_hint))
+    BtnRow { Btn(stringResource(R.string.make_now), "$tag-now", primary = true, enabled = state !is RunState.Running) { runner.make(magazine) } }
     when (val s = state) {
         is RunState.Running -> {
-            Meta(progressText(s.progress), "make-progress")
-            s.progress.current?.let { Meta(stringResource(R.string.make_current, it), "make-progress-current") }
+            ActivityProgress(progressText(s.progress), "$tag-progress", s.progress)
+            s.progress.current?.let { Meta(stringResource(R.string.make_current, it), "$tag-progress-current") }
         }
-        is RunState.Missing -> Body(missingText(s.what), "make-missing")
-        is RunState.Failed -> Body(failText(s), "make-failure")
-        is RunState.Done -> MakeDone(s.result, onOpenEdition)
+        is RunState.Missing -> Body(missingText(s.what), "$tag-missing")
+        is RunState.Failed -> Body(failText(s), "$tag-failure")
+        is RunState.Done -> if (!compact) MakeDone(s.result, onOpenEdition) else {
+            s.result.edition?.let { edition ->
+                Btn(stringResource(R.string.make_done_title, edition.number), "$tag-open") { onOpenEdition(edition.key) }
+            } ?: Body(stringResource(R.string.make_nothing_written), "$tag-no-edition")
+        }
         RunState.Idle -> Unit
     }
 }

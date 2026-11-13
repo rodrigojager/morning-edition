@@ -7,7 +7,11 @@
     <string name="library_new">Nova revista</string>
     <string name="library_empty_title">Nenhuma revista</string>
     <string name="library_empty_body">Crie uma revista para guardar a receita dela.</string>
-    <string name="library_open_page">Edições e nova edição</string>
+    <string name="library_open_page">Gerenciar revista</string>
+    <string name="mag_details_show">⌄ Ver detalhes</string>
+    <string name="mag_details_hide">⌃ Recolher detalhes</string>
+    <string name="edition_mini_number">Edição %1$02d</string>
+    <string name="edition_unread_badge">● NÃO LIDA</string>
 
     <string name="cadence_daily">Diária, às %1$dh</string>
     <string name="cadence_weekly">Semanal, às %1$dh</string>

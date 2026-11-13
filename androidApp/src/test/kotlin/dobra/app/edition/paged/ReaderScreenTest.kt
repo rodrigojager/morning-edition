@@ -98,6 +98,10 @@ class ReaderScreenTest {
         compose.onNodeWithTag("cover-title").assertIsDisplayed()
         compose.onNodeWithTag("cover-summary").assertIsDisplayed()
         assertCoverLeadFits()
+        val cover = compose.onNodeWithTag("cover").getUnclippedBoundsInRoot()
+        val title = compose.onNodeWithTag("cover-title").getUnclippedBoundsInRoot()
+        assertTrue("cover must not push the lead to the bottom", title.top < cover.top + (cover.bottom - cover.top) * 0.75f)
+        compose.onNodeWithTag("cover-visual").assertIsDisplayed()
         preview("reader-cover")
     }
 

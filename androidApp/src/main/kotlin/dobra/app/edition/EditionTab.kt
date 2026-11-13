@@ -1,6 +1,7 @@
 package dobra.app.edition
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,10 +27,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -46,6 +49,7 @@ import dobra.app.shell.AppFonts
 import dobra.app.shell.LocalReaderColors
 import dobra.app.shell.LocalTextScale
 import dobra.model.CollectionLine
+import dobra.model.Block
 import dobra.model.CollectionState
 import dobra.model.Edition
 import dobra.model.Format
@@ -172,7 +176,8 @@ internal fun CoverContent(
             .testTag("cover"),
     ) {
         val compact = maxHeight < 480.dp || scale > 1.2f
-        Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
+        val visualHeight = (maxHeight * 0.25f).coerceIn(100.dp, 180.dp)
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     buildAnnotatedString {
@@ -196,7 +201,20 @@ internal fun CoverContent(
                 )
             }
             if (first != null) {
-                Column(Modifier.padding(top = 24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (!compact) {
+                    val image = first.blocks.firstOrNull { it.type == "image" }?.text("src")
+                    val loader = LocalImageLoader.current
+                    val bitmap by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, image, loader) {
+                        value = image?.let { loader.load(it) }
+                    }
+                    val visual = Modifier.fillMaxWidth().height(visualHeight).testTag("cover-visual")
+                    androidx.compose.foundation.layout.Box(visual) {
+                        if (bitmap != null) Image(
+                            bitmap!!, contentDescription = first.title(), modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop,
+                        ) else IllustrationBlock(first.blocks.firstOrNull { it.type == "illustration" } ?: Block("illustration"))
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         stringResource(R.string.cover_first_story).uppercase(), color = colors.accent,
                         fontFamily = AppFonts.mono, fontWeight = FontWeight.SemiBold, fontSize = (11.5f * scale).sp,

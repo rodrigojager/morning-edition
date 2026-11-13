@@ -34,7 +34,8 @@ internal fun SourceCollectorPart(m: Magazine, s: Source, desk: CollectorDesk?) {
     }
     val working = state as? DeskState.Working
 
-    Meta(stateLabel(s, state, record), "source-state-${s.id}")
+    if (working != null) ActivityProgress(stateLabel(s, state, record), "source-state-${s.id}")
+    else Meta(stateLabel(s, state, record), "source-state-${s.id}")
     reasonOf(s, state, record)?.let { Body(stringResource(R.string.collector_reason, it), "source-reason-${s.id}") }
     if (desk == null || working != null) return
 

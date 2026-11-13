@@ -7,6 +7,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertRangeInfoEquals
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -76,11 +79,12 @@ private object PlainCipher : SecretCipher {
 }
 
 /** Recorded answers in the OpenAI chat completions format, replayed in order. Nothing reaches a network. */
-private class Replay(answers: List<String>) : HttpTransport {
+private class Replay(answers: List<String>, private val writingGate: CompletableDeferred<Unit>? = null) : HttpTransport {
     private val queue = answers.toMutableList()
     val sent = mutableListOf<HttpRequest>()
     override suspend fun send(request: HttpRequest): HttpResponse {
         synchronized(sent) { sent += request }
+        if (sent.size == 2) writingGate?.await()
         val content = synchronized(queue) { queue.removeAt(0) }
         val body = buildJsonObject {
             put("id", "chatcmpl-test")
@@ -244,16 +248,26 @@ class MakeScreensTest {
 
     @Test
     fun makeNowShowsProgressThenOpensTheNewEditionInTheReader() {
-        val transport = Replay(listOf(selection, answer("Um guarda de permissões para agentes", tool.link)))
+        val writing = CompletableDeferred<Unit>()
+        val transport = Replay(listOf(selection, answer("Um guarda de permissões para agentes", tool.link)), writing)
         val collector = Gated()
         val runner = MakeRunner(scope, { store }, ai(transport), collector, today = { "2026-11-13" })
         showLibrary(runner)
+        click("make-$id-now")
+        textIs("make-$id-progress", "Coletando… 1 de 2 fontes")
+        tag("make-$id-progress-spinner").assertExists()
+        tag("make-$id-progress-bar").assertRangeInfoEquals(ProgressBarRangeInfo(0.5f, 0f..1f))
+        tag("make-$id-now").assertIsNotEnabled()
         click("mag-open-$id")
-        click("make-now")
 
         textIs("make-progress", "Coletando… 1 de 2 fontes")
         tag("make-progress-current").assertTextEquals("Agora: Hacker News")
         collector.gate.complete(Unit)
+        textIs("make-progress", "Escrevendo e conferindo… 0 de 1 matérias")
+        tag("make-progress-spinner").assertExists()
+        tag("make-progress-bar").assertRangeInfoEquals(ProgressBarRangeInfo(0f, 0f..1f))
+        tag("make-now").assertIsNotEnabled()
+        writing.complete(Unit)
 
         tag("make-result")
         tag("make-result-counts").assertTextEquals("1 matéria · 1 deixada de fora · custo de IA: US$ 0,0060 em 2 chamadas")

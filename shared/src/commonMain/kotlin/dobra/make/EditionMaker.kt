@@ -126,7 +126,12 @@ class EditionMaker(
             } catch (e: AiException.NotConfigured) {
                 throw e
             } catch (e: AiException) {
-                leftOut += leftOutOf(pick, "Ficou de fora porque a chamada à IA falhou: ${e.message}.")
+                val reason = when (e) {
+                    is AiException.Unreachable -> "A conexão com a IA falhou mesmo após novas tentativas. Esta matéria não foi publicada e pode ser selecionada em uma próxima edição."
+                    is AiException.RateLimited -> "O provedor de IA limitou as chamadas. Esta matéria pode ser selecionada em uma próxima edição."
+                    else -> "A IA não conseguiu concluir esta matéria: ${e.message}."
+                }
+                leftOut += leftOutOf(pick, reason)
                 return@forEachIndexed
             }
             attempts += outcome.attempts

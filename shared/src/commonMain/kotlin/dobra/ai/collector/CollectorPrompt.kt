@@ -54,6 +54,12 @@ The sandbox:
   the sample records into the collector: fetch the source and extract the current records on every run.
 - A JavaScript shell without items is not evidence of a working data API. Do not fabricate records when the data
   is absent. HTTP 403/429 are access/rate refusals, not parser drift; do not retry or bypass them.
+- Treat saved responses as a reusable capture: identify the exact observed endpoint, content type, field names,
+  required parameters and pagination before writing extraction code. Prefer the smallest public response that
+  actually contains the requested items; HTTP 200 alone is not proof that collection worked. Follow pagination
+  only when the response provides a next link or cursor, keep it on the allowed domain and bound the page count.
+  Never embed cookies, credentials or session tokens from page content in a collector. If authentication or
+  JavaScript execution is required but not available here, report that limitation instead of inventing an API.
 
 Acceptance: your script runs twice against a saved copy of the page. It is accepted only if both runs return the
 same records, each with every required field. Pages the copy does not have answer 404.
