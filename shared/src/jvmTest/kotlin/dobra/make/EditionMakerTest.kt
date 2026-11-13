@@ -207,6 +207,10 @@ class EditionMakerTest {
         val seedEdition = store.editions.list(magazine.id).single()
         val liked = store.editions.get(seedEdition.key)!!.items.first()
         store.marks.setFeedback("${seedEdition.key}/${liked.id}", Feedback.MORE)
+        val likedFromHackerNews = store.editions.get(seedEdition.key)!!.items.first { item ->
+            dobra.ai.rewrite.Verification.addressesOf(item).first.any { it.startsWith("https://news.ycombinator.com/item?") }
+        }
+        store.marks.setFeedback("${seedEdition.key}/${likedFromHackerNews.id}", Feedback.MORE)
         val disliked = store.editions.get(seedEdition.key)!!.items.last()
         store.marks.setFeedback("${seedEdition.key}/${disliked.id}", Feedback.LESS)
         val pages = PageReader { url -> if (url == tool.link) "README do agent-guard: instale com dotnet tool install." else null }
@@ -223,6 +227,8 @@ class EditionMakerTest {
             assertTrue("Interests the reader switched off (leave them out): Rust" in prompt)
             assertTrue(ItemRules.titleOf(liked.blocks)!! in prompt)
             assertTrue(ItemRules.titleOf(disliked.blocks)!! in prompt)
+            assertTrue("discovered via GitHub Trending" in prompt)
+            assertTrue("${ItemRules.titleOf(likedFromHackerNews.blocks)} (discovered via Hacker News" in prompt, prompt)
             // the links already published: every source link of the seed edition
             assertTrue("https://github.com/cloudflare/security-audit-skill" in prompt)
             assertTrue("https://github.com/trending?since=weekly" in prompt)
@@ -331,6 +337,63 @@ class EditionMakerTest {
         )
         assertTrue(seen.any { it.stage == MakeStage.WRITING && it.current == tool.title })
         assertFalse(seen.last().stage == MakeStage.COLLECTING)
+    }
+
+    @Test
+    fun collectionContinuesTowardTenWithoutRepeatingRecordsOrRetryingRefusedSources() = runBlocking {
+        val records = (1..10).map { i -> RawRecord("Tool $i", "https://github.com/community/tool-$i", "", "Practical CLI $i") }
+        val answers = mutableListOf<String>()
+        for (range in listOf(1..1, 2..5, 6..10)) {
+            answers += """{"keep":[${range.joinToString(",") { """{"records":["r$it"]}""" }}],"leftOut":[]}"""
+            range.forEach { answers += Samples.item("Tool $it", records[it - 1].link) }
+        }
+        val ai = Recorded(answers)
+        var rounds = 0
+        val calls = mutableListOf<List<String>>()
+        val collector = object : MagazineCollector {
+            override suspend fun collect(magazine: Magazine, onProgress: (WorkerProgress) -> Unit): WorkerResult {
+                calls += magazine.sources.map { it.id }
+                assertEquals(1, store.editions.list(magazine.id).size, "no intermediate edition")
+                rounds++
+                val page = when (rounds) { 1 -> records.take(1); 2 -> records.take(5); else -> records.drop(4) }
+                return run(page).let { result -> result.copy(results = result.results.map {
+                    if (it.sourceId == "github-trending") it.copy(cursor = if (rounds < 3) "page-${rounds + 1}" else null) else it
+                }) }
+            }
+        }
+        val result = EditionPipeline(collector, maker(ai)).run(magazine)
+        assertEquals(10, assertNotNull(result.edition).items.size)
+        assertNull(result.quantityNote)
+        assertEquals(10, result.considered)
+        assertEquals(3, rounds)
+        assertEquals(listOf("github-trending"), calls[1])
+        assertEquals(listOf("github-trending"), calls[2])
+        assertEquals(2, store.editions.list(magazine.id).size)
+        assertTrue("Desired minimum: 5. Target: 10" in ai.prompts.first())
+    }
+
+    @Test
+    fun exhaustionExplainsMinimumShortfallAndDuplicatePagesDoNotFillTheTarget() = runBlocking {
+        val ai = Recorded(listOf("""{"keep":[{"records":["r1"]}],"leftOut":[]}""", toolItem))
+        var moreCalls = 0
+        val result = maker(ai).make(magazine, run(listOf(tool)), collectMore = {
+            moreCalls++
+            run(listOf(tool))
+        })
+        assertEquals(1, assertNotNull(result.edition).items.size)
+        assertEquals(2, moreCalls)
+        assertEquals(1, result.considered)
+        assertTrue(assertNotNull(result.quantityNote).contains("abaixo do mínimo desejado de 5"))
+        assertEquals(2, ai.prompts.size)
+    }
+
+    @Test
+    fun aBusySourceDoesNotHideLaterSourcesInTheFirstSelectionBatch() = runBlocking {
+        val busy = run((1..170).map { tool.copy(link = "https://github.com/acme/tool-$it") })
+        val later = busy.results.last().copy(state = CollectionState.ANSWERED, fresh = listOf(notes), refusedStatus = null)
+        val ai = Recorded(listOf("""{"keep":[],"leftOut":[]}""", """{"keep":[],"leftOut":[]}"""))
+        maker(ai).make(magazine, busy.copy(results = listOf(busy.results.first(), later)))
+        assertTrue(notes.title in ai.prompts.first())
     }
 
     @Test

@@ -3,7 +3,7 @@
     <string name="saved_placeholder">Suas matérias salvas aparecem aqui.</string>
     <string name="saved_kicker">SALVOS</string>
     <string name="saved_title">O que você guardou</string>
-    <string name="saved_intro">Matérias e notas rápidas salvas, por revista e por edição. Elas ficam aqui mesmo se a edição for apagada.</string>
+    <string name="saved_intro">Matérias e notas rápidas salvas, por revista e por edição. A leitura reúne todos os salvos da revista, de qualquer edição. Eles ficam aqui mesmo se a edição for apagada.</string>
     <string name="saved_empty_title">Nada salvo ainda</string>
     <string name="saved_empty_body">Toque em Salvar numa matéria ou numa nota rápida e ela aparece aqui.</string>
     <string name="saved_edition_date">Edição de %1$s</string>
@@ -13,6 +13,6 @@
     <string name="saved_kind_note">Nota rápida</string>
     <string name="saved_notes_title">Notas salvas</string>
     <string name="saved_back">Voltar aos salvos</string>
-    <string name="saved_only_kicker">SÓ OS SALVOS · %1$s · %2$s</string>
+    <string name="saved_only_kicker">SÓ OS SALVOS · %1$s</string>
     <string name="saved_untitled">Sem título</string>
 </resources>

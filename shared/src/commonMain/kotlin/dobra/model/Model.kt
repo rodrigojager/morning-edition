@@ -156,4 +156,6 @@ data class Magazine(
     val cadence: Cadence = Cadence(CadenceKind.DAILY, 7),
     val sources: List<Source> = emptyList(),
     val version: Int = 1,
+    val minimumItems: Int = 5,
+    val targetItems: Int = 10,
 )

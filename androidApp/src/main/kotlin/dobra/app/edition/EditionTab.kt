@@ -29,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -90,6 +91,10 @@ internal fun pagesOf(edition: Edition): List<Page> = buildList {
     add(Page.End)
 }
 
+/** The contents follows the same story-then-note order as the reader. */
+internal fun Edition.readingItems(): List<Item> =
+    items.filter { it.kind == ItemKind.STORY } + items.filter { it.kind == ItemKind.NOTE }
+
 /**
  * The chapter of the reading position a piece of the scroll belongs to: the cover, the contents, one per story, the
  * short notes together, the backstage with the end mark. The paged reader uses the same ids.
@@ -97,7 +102,7 @@ internal fun pagesOf(edition: Edition): List<Page> = buildList {
 internal fun chapterIdOf(page: Page): String = when (page) {
     Page.Cover -> "cover"
     Page.Toc -> "toc"
-    is Page.Chapter -> if (page.item.kind == ItemKind.STORY) "story-${page.item.id}" else "notes"
+    is Page.Chapter -> "story-${page.item.id}"
     Page.NotesHeader -> "notes"
     Page.Backstage, Page.End -> "backstage"
 }
@@ -125,6 +130,13 @@ fun EditionTab(
     val savedKeys by remember(marks) {
         marks?.observeSaved()?.map { list -> list.map { it.key }.toSet() } ?: flowOf(emptySet())
     }.collectAsState(initial = emptySet())
+    LaunchedEffect(listState, edition.key, marks) {
+        snapshotFlow {
+            val layout = listState.layoutInfo
+            layout.visibleItemsInfo.filter { it.offset < layout.viewportEndOffset && it.offset + it.size > layout.viewportStartOffset }
+                .mapNotNull { (pages.getOrNull(it.index) as? Page.Chapter)?.item?.id }
+        }.collect { ids -> ids.forEach { marks?.setStoryRead(Keys.item(edition.key, it)) } }
+    }
     CompositionLocalProvider(LocalLooks provides magazine.looks) {
         LazyColumn(
             state = listState,
@@ -134,7 +146,7 @@ fun EditionTab(
             items(pages.size, key = { pages[it].key }) { index ->
                 when (val page = pages[index]) {
                     Page.Cover -> CoverContent(magazine, edition, stories.firstOrNull(), Modifier.fillParentMaxHeight())
-                    Page.Toc -> TocPage(stories) { item ->
+                    Page.Toc -> TocPage(edition.readingItems()) { item ->
                         scope.launch { listState.scrollToItem(pages.indexOfFirst { it.key == "chapter-${item.id}" }) }
                     }
                     is Page.Chapter -> {
@@ -289,7 +301,7 @@ internal fun TocRow(index: Int, item: Item, onOpen: (Item) -> Unit) {
 
 /**
  * One story or note: its blocks, one after the other, as the magazine's format lets them be shown. A story has its
- * buttons under the head (illustration, title, summary) and counts as read once it is opened; a note ends with Salvar.
+ * feedback buttons under the head (illustration, title, summary). Notes have the same actions as longer stories.
  */
 @Composable
 private fun ChapterPage(
@@ -303,9 +315,6 @@ private fun ChapterPage(
 ) {
     val colors = LocalReaderColors.current
     val isStory = item.kind == ItemKind.STORY
-    LaunchedEffect(itemKey, marks) {
-        if (isStory) marks?.setStoryRead(itemKey)
-    }
     val blocks = remember(item, format) { shownBlocks(item.blocks, format) }
     val head = headOf(blocks)
     val body = blocks.drop(head.size)
@@ -319,9 +328,8 @@ private fun ChapterPage(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             head.forEach { BlockView(it) }
-            if (isStory) ItemStoryActions(item, itemKey, saved, marks, onSave)
+            ItemStoryActions(item, itemKey, saved, marks, onSave)
             body.forEach { BlockView(it) }
-            if (!isStory) NoteSave(item.id, saved, onSave)
         }
     }
 }

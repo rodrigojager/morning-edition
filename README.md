@@ -26,7 +26,7 @@ names. The folder is taken from the environment variable `DOBRA_SECRETS`, else t
 `dobra.secretsDir`, else `../_secrets` next to the repository. Without it the release build stops with a message
 saying what is missing.
 
-Release 0.3.2: `androidApp-release.apk`, version code 5, minSdk 28 (Android 9), targetSdk 35.
+Release 0.3.3: `androidApp-release.apk`, version code 6, minSdk 28 (Android 9), targetSdk 35.
 
 ## Magazine instructions and editions
 
@@ -36,7 +36,7 @@ edition list appear before the recipe's source cards. Each edition offers **Abri
 not rewrite existing editions. The dedicated instructions editor preserves the rest of the current recipe.
 
 The library also offers generation and editing directly on each magazine card. A horizontal shelf of edition
-cards opens saved editions immediately and shows unread badges. Subjects, keywords and detailed counts expand
+cards opens saved editions immediately and shows unread badges. Small icon actions mark an edition read/unread or delete it with confirmation. Reading all stories also clears the unread badge. Subjects, keywords and detailed counts expand
 under **Ver detalhes**. Generation stays visible when moving between the library and the magazine page, with a
 spinner and source-count progress during collection, indeterminate selection, then article-count progress during
 writing. The total number of articles is known only after selection; bars describe each phase, not estimated time.
@@ -55,8 +55,20 @@ ranking and feedback. These are AI decisions, so semantic compliance still needs
 An empty keyword list keeps all valid source records for AI curation; a nonempty list enables the literal keyword
 prefilter. Keywords are optional and do not replace the instructions.
 
+The contents shortcut in the reading toolbar opens the contents from any chapter. Both full articles and short
+notes appear there and offer Ask, Save, More and Less actions, arranged in two consistent rows with icons.
+In **Salvos**, **Ler só os salvos** belongs to the magazine and reads saved items across all its editions, keeping
+other magazines separate. Saved copies remain available after their original edition is deleted.
+
+The recipe form defaults to a desired minimum of **5** and a target of **10** items, both editable from 1 to 40.
+Generation considers balanced batches of up to 160 records, up to three batches and three collection rounds in
+total. When below target it consumes remaining candidates or follows explicit collector continuations. Duplicate
+links, unchanged feeds and refused sources are not repeatedly fetched to fill the quota. It saves one final edition
+and reports a shortfall when quality, source exhaustion or safety limits prevent reaching the target. This is a
+bounded best effort, not a guarantee of five suitable items.
+
 **Mais disso** and **Menos disso** are per-magazine preferences. Up to ten titles marked each way are included in
-both AI prompts, together with the recipe. They influence subsequent editions, do not train a model or change
+both AI prompts, together with the recipe and matching discovery-source names. Each source's “what to look for” description is included too. They influence subsequent editions, do not train a model or change
 collectors, and cannot override explicit exclusions. A mark only supplies an example while its edition remains
 stored, because that edition supplies the title.
 
@@ -65,7 +77,10 @@ stored, because that edition supplies the title.
 The first bundled edition is a manually curated demonstration. It was not produced by saved collectors. Version
 0.3.1 also bundles collectors and installs missing ones on existing copies of the starter magazine, preserving
 instructions, custom collectors, changed source addresses and deleted sources/editions. Nine sources produce valid
-records in saved-response tests. Apiiro's current page is a JavaScript shell without readable article links; its
+records in saved-response tests. Version 0.3.3 upgrades unchanged bundled collectors: GitHub Trending merges daily
+and weekly repositories and can continue with monthly results; Hacker News continues with public pages 2 and 3;
+DEV reads up to three pages of 40 entries. Custom collectors and changed URLs remain untouched. Live Apiiro
+requests currently return HTTP 403, and a saved JavaScript shell has no readable article links; its
 collector is marked **em reparo** and fails explicitly rather than supplying invented items. Python forum collection
 currently reads the Python feed; the older demonstration also contained manually selected Rust material. Reddit
 subfeeds can refuse access individually, and live source availability is not guaranteed by saved-response tests.

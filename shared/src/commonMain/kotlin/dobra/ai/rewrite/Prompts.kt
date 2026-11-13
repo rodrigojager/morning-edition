@@ -31,6 +31,10 @@ data class Brief(
         append("Language of everything you write: ").append(languageName(m.language)).append('\n')
         append("Tone: ").append(toneName(m.tone)).append('\n')
         append("Instructions from the reader:\n").append(m.prompt.ifBlank { "(none)" }).append('\n')
+        append("Desired minimum items: ").append(m.minimumItems).append("; target: ").append(m.targetItems).append('\n')
+        m.sources.filter { it.liked.isNotBlank() }.forEach {
+            append("What the reader values in source ").append(it.name).append(": ").append(it.liked).append('\n')
+        }
         if (liked.isNotEmpty()) append("The reader asked for more like: ").append(liked.joinToString("; ")).append('\n')
         if (disliked.isNotEmpty()) append("The reader asked for less like: ").append(disliked.joinToString("; ")).append('\n')
         if (interestsOff.isNotEmpty()) {
@@ -84,8 +88,8 @@ object Prompts {
         You are the editor of a personal magazine read by one person. You choose, among raw records collected from
         the magazine's sources, the few that deserve an item in this edition. Relevance is judged by the magazine's
         instructions and subjects; popularity is one signal, not the criterion. Leave out clickbait, wrappers with
-        nothing of their own, abandoned projects, opportunistic forks and suspicious signals. Three to eight good items
-        are better than filling a quota; fewer, even none, is a correct result. A record whose link was already
+        nothing of their own, abandoned projects, opportunistic forks and suspicious signals. Try to reach the recipe
+        target using eligible items; fewer, even none, is correct when the evidence does not support enough items. A record whose link was already
         published may come back only as an update, and only when its text shows something new.
         Apply the reader's inclusion and exclusion instructions as eligibility rules before ranking by subject or
         popularity. An excluded kind of content is not eligible just because it mentions a relevant technology.
@@ -95,7 +99,9 @@ object Prompts {
         pieces, editorials, predictions and general discussion; mentioning a tool in passing is not enough.
         Do not fill the edition with excluded content when nothing eligible was collected.
         Treat more-like and less-like feedback as preferences among eligible items; it never overrides explicit
-        exclusions. Preferences for community projects, free access or open source are not mandatory unless the
+        exclusions. Feedback that names the discovery source also signals interest in finding more eligible tools
+        from that source; it does not make every item from that source suitable. There is no per-source item quota.
+        Preferences for community projects, free access or open source are not mandatory unless the
         reader explicitly makes them so. Do not silently exclude useful paid or closed-source products.
         You answer with one JSON object and nothing else.
     """.trimIndent()

@@ -111,4 +111,8 @@
 
     <string name="missing_title">Revista não encontrada</string>
     <string name="missing_body">Esta revista não está na biblioteca. Ela pode ter sido apagada.</string>
+    <string name="form_minimum_items">Mínimo desejado de itens por edição</string>
+    <string name="form_target_items">Meta de itens por edição</string>
+    <string name="form_items_hint">A IA tenta completar a meta com novas buscas. Se não houver conteúdo adequado suficiente, publica o que conseguiu e explica a diferença.</string>
+    <string name="form_error_items">Use valores de 1 a 40, com o mínimo menor ou igual à meta.</string>
 </resources>

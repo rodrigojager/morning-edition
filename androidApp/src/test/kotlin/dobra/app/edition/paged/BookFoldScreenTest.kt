@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,6 +26,8 @@ import androidx.window.testing.layout.FoldingFeature
 import androidx.window.testing.layout.TestWindowLayoutInfo
 import androidx.window.testing.layout.WindowLayoutInfoPublisherRule
 import dobra.app.edition.EditionFixture
+import dobra.app.edition.ImageLoader
+import dobra.app.edition.LocalImageLoader
 import dobra.app.shell.AppTheme
 import dobra.model.ItemKind
 import dobra.store.ReadingMode
@@ -52,12 +55,16 @@ class BookFoldScreenTest {
     private fun boundsOf(tag: String) = compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
 
     private fun text(tag: String): String =
-        compose.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("").orEmpty()
+        compose.onNodeWithTag(tag, useUnmergedTree = tag == "pager-label").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("").orEmpty()
 
     @Test
     fun aVerticalFoldInTheMiddleCarriesTheSpineAndNoTextRunsAcrossIt() {
         compose.setContent {
-            AppTheme { ReaderScreen(magazine, edition, ReadingMode.BOOK, onMode = {}, onBackToLibrary = {}) }
+            AppTheme {
+                CompositionLocalProvider(LocalImageLoader provides ImageLoader { null }) {
+                    ReaderScreen(magazine, edition, ReadingMode.BOOK, onMode = {}, onBackToLibrary = {})
+                }
+            }
         }
         compose.waitForIdle()
         // a hinge 60 pixels wide in the middle of the window: wider than the book's own gutter
@@ -93,8 +100,10 @@ class BookFoldScreenTest {
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
             AppTheme {
-                Box(Modifier.width(width).fillMaxHeight()) {
-                    ReaderScreen(magazine, edition, mode, onMode = { mode = it }, onBackToLibrary = {})
+                CompositionLocalProvider(LocalImageLoader provides ImageLoader { null }) {
+                    Box(Modifier.width(width).fillMaxHeight()) {
+                        ReaderScreen(magazine, edition, mode, onMode = { mode = it }, onBackToLibrary = {})
+                    }
                 }
             }
         }

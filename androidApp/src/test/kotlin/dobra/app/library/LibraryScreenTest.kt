@@ -295,6 +295,54 @@ class LibraryScreenTest {
     }
 
     @Test
+    fun compactEditionActionsHandleNaturalReadingUnreadAndConfirmedDeletion() {
+        runBlocking {
+            val summary = store.editions.list(id).single()
+            summary.storyIds.forEach { store.marks.setStoryRead(dobra.store.Keys.item(key, it)) }
+            store.marks.save(key, EditionFixture.edition.items.first())
+        }
+        showLibrary()
+        click("mag-details-$id")
+        compose.waitUntil(5_000) {
+            runCatching { tag("mag-counts-$id").assertTextEquals("1 edição · nenhuma por ler · 1 item salvo · 10 fontes") }.isSuccess
+        }
+        click("mini-read-$key")
+        compose.waitUntil(5_000) { runBlocking { store.unread.count(id) } == 1 }
+        assertTrue(runBlocking { store.marks.readStories(key).isEmpty() })
+        click("mini-read-$key")
+        compose.waitUntil(5_000) { runBlocking { store.marks.isEditionRead(key) } }
+        click("mini-delete-$key")
+        click("confirm-no")
+        assertNotNull(runBlocking { store.editions.get(key) })
+        click("mini-delete-$key")
+        click("confirm-yes")
+        gone("mag-edition-$key")
+        assertNull(runBlocking { store.editions.get(key) })
+        assertEquals(1, runBlocking { store.marks.saved().size })
+    }
+
+    @Test
+    fun quantitySettingsAreEditableAndInvalidRangesCannotBeSaved() {
+        showLibrary()
+        click("mag-edit-$id")
+        tag("field-minimum-items").assertTextEquals("5")
+        tag("field-target-items").assertTextEquals("10")
+        tag("field-minimum-items").performTextReplacement("15")
+        click("form-save")
+        tag("form-error-items")
+        assertEquals(5, runBlocking { store.magazines.get(id)!!.minimumItems })
+        tag("field-minimum-items").performTextReplacement("6")
+        tag("field-target-items").performTextReplacement("12")
+        click("form-save")
+        tag("screen-magazine")
+        assertEquals(6, runBlocking { store.magazines.get(id)!!.minimumItems })
+        assertEquals(12, runBlocking { store.magazines.get(id)!!.targetItems })
+        click("edit-magazine")
+        tag("field-minimum-items").assertTextEquals("6")
+        tag("field-target-items").assertTextEquals("12")
+    }
+
+    @Test
     fun webAddressesAreOnlyHttpAndHttps() {
         assertTrue(isWebAddress("https://exemplo.org/a"))
         assertTrue(isWebAddress(" http://exemplo.org "))

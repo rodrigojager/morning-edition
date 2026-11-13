@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dobra.app.R
+import dobra.app.shell.ActionGlyph
+import dobra.app.shell.ActionIcon
 import dobra.app.shell.AppFonts
 import dobra.app.shell.LocalReaderColors
 import dobra.store.ReadingMode
@@ -66,6 +68,7 @@ internal fun PagerBar(
     scroll: Boolean,
     onStep: (Int) -> Unit,
     onCycle: () -> Unit,
+    onContents: () -> Unit,
     pinned: Boolean = true,
     onPin: (() -> Unit)? = null,
 ) {
@@ -83,15 +86,21 @@ internal fun PagerBar(
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             val prev = stringResource(if (scroll) R.string.section_previous else R.string.page_previous)
             val next = stringResource(if (scroll) R.string.section_next else R.string.page_next)
             Arrow(back = true, enabled = !atStart, description = prev, tag = "page-prev") { onStep(-1) }
-            Text(
-                label, color = colors.ink, fontFamily = AppFonts.mono, fontSize = 12.sp, maxLines = 1,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).testTag("pager-label"),
-            )
+            val contents = stringResource(R.string.reader_open_contents)
+            Row(
+                Modifier.weight(1f).heightIn(min = 44.dp).testTag("reader-contents")
+                    .semantics { contentDescription = contents }.clickable(role = Role.Button, onClick = onContents),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                ActionIcon(ActionGlyph.CONTENTS)
+                Text(label, color = colors.ink, fontFamily = AppFonts.mono, fontSize = 12.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.testTag("pager-label"))
+            }
             val name = modeLabel(mode)
             val chipDescription = stringResource(R.string.mode_change, name)
             Box(
@@ -101,7 +110,7 @@ internal fun PagerBar(
                     .border(1.dp, colors.rule, RoundedCornerShape(20.dp))
                     .clickable(role = Role.Button, onClick = onCycle)
                     .semantics { contentDescription = chipDescription }
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 10.dp)
                     .testTag("mode-chip"),
                 contentAlignment = Alignment.Center,
             ) {

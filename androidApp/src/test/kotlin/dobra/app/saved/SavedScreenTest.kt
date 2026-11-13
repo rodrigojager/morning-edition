@@ -78,7 +78,7 @@ class SavedScreenTest {
 
     private fun readOnlySaved() {
         showSaved()
-        click("saved-read-${edition.key}")
+        click("saved-read-${edition.magazine}")
         tag("saved-reader")
     }
 
@@ -114,6 +114,25 @@ class SavedScreenTest {
         click("saved-back")
         tag("saved-item-$storyKey")
         tag("saved-item-$noteKey")
+    }
+
+    @Test
+    fun readingSavedCollectsEveryEditionOfOnlyTheSelectedMagazine() {
+        val older = edition.copy(date = "2026-01-01")
+        val secondStory = edition.items.last { it.kind == ItemKind.STORY }
+        runBlocking {
+            store.marks.save(older.key, secondStory)
+            store.marks.save("another/2026-01-02", secondStory.copy(id = "other-magazine"))
+        }
+        readOnlySaved()
+        inReader("saved-story-${secondStory.id}")
+        compose.onNodeWithTag("saved-reader").performScrollToNode(hasTestTag("saved-back"))
+        click("saved-back")
+        tag("saved-read-${edition.magazine}")
+        assertTrue(compose.onAllNodesWithTag("saved-read-${edition.key}").fetchSemanticsNodes().isEmpty())
+        click("saved-read-another")
+        tag("saved-story-other-magazine")
+        assertTrue(compose.onAllNodesWithTag("saved-story-${story.id}").fetchSemanticsNodes().isEmpty())
     }
 
     @Test

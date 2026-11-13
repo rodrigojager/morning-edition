@@ -11,6 +11,12 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import dobra.app.shell.ActionGlyph
+import dobra.app.shell.ActionIcon
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.semantics.Role
@@ -106,9 +112,13 @@ private fun MagazineCard(store: Store, m: Magazine, savedCount: Int, go: (String
     val editions by remember(m.id) { store.editions.observe(m.id) }.collectAsState(initial = emptyList())
     val unread by remember(m.id) { store.unread.observe(m.id) }.collectAsState(initial = 0)
     var expanded by rememberSaveable(m.id) { mutableStateOf(false) }
-    val unreadKeys by produceState(emptySet<String>(), editions, unread) {
+    var deleting by rememberSaveable(m.id) { mutableStateOf<String?>(null) }
+    var ticks by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
+    val unreadKeys by produceState(emptySet<String>(), editions, unread, ticks) {
         value = editions.filter { e ->
-            !store.marks.isEditionRead(e.key) && e.storyIds.any { it !in store.marks.readStories(e.key) }
+            val read = store.marks.readStories(e.key)
+            !store.marks.isEditionRead(e.key) && e.storyIds.any { dobra.store.Keys.item(e.key, it) !in read }
         }.map { it.key }.toSet()
     }
     Card("mag-card-${m.id}") {
@@ -131,15 +141,31 @@ private fun MagazineCard(store: Store, m: Magazine, savedCount: Int, go: (String
                             .clickable(role = Role.Button) { onOpenEdition(e.key) }.padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Kicker(stringResource(R.string.edition_mini_number, e.number))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Kicker(stringResource(R.string.edition_mini_number, e.number))
+                            ActionIcon(ActionGlyph.OPEN, Modifier.size(14.dp))
+                        }
                         Meta(e.date)
                         Meta(countOf(e.storyIds.size, R.string.count_stories_one, R.string.count_stories_many))
                         if (e.key in unreadKeys) Kicker(stringResource(R.string.edition_unread_badge))
                         else Meta(stringResource(R.string.edition_read))
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            MiniAction(if (e.key in unreadKeys) ActionGlyph.READ else ActionGlyph.UNREAD,
+                                stringResource(if (e.key in unreadKeys) R.string.edition_mark_read else R.string.edition_mark_unread),
+                                "mini-read-${e.key}") {
+                                val read = e.key in unreadKeys
+                                scope.launch { setEditionRead(store, e, read); ticks++ }
+                            }
+                            MiniAction(ActionGlyph.DELETE, stringResource(R.string.edition_delete), "mini-delete-${e.key}") { deleting = e.key }
+                        }
                     }
                 }
             }
         } else Meta(stringResource(R.string.editions_none_title))
+        editions.firstOrNull { it.key == deleting }?.let { e ->
+            ConfirmCard(stringResource(R.string.confirm_edition_title, e.number), stringResource(R.string.confirm_edition_body),
+                onYes = { deleting = null; scope.launch { store.editions.delete(e.key); ticks++ } }, onNo = { deleting = null })
+        }
         if (maker != null) MakeNow(m, maker, onOpenEdition, compact = true)
         BtnRow {
             Btn(stringResource(R.string.magazine_edit), "mag-edit-${m.id}") { go("form:${m.id}") }
@@ -154,6 +180,20 @@ private fun MagazineCard(store: Store, m: Magazine, savedCount: Int, go: (String
             if (m.keywords.isEmpty()) Meta(stringResource(R.string.recipe_none)) else Chips(m.keywords, "mag-keywords-${m.id}")
         }
     }
+}
+
+@Composable
+private fun MiniAction(icon: ActionGlyph, label: String, tag: String, onClick: () -> Unit) {
+    androidx.compose.foundation.layout.Box(
+        Modifier.size(44.dp).border(1.dp, LocalReaderColors.current.rule, RoundedCornerShape(6.dp))
+            .testTag(tag).semantics { contentDescription = label }.clickable(role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { ActionIcon(icon) }
+}
+
+private suspend fun setEditionRead(store: Store, edition: EditionSummary, read: Boolean) {
+    store.marks.setEditionRead(edition.key, read)
+    if (!read) store.marks.readStories(edition.key).forEach { store.marks.setStoryRead(it, false) }
 }
 
 @Composable
@@ -205,8 +245,11 @@ private fun MagazinePage(
     val unread by remember(id) { store.unread.observe(id) }.collectAsState(initial = 0)
     val saved by remember(store) { store.marks.observeSaved() }.collectAsState(initial = emptyList())
     var ticks by remember { mutableStateOf(0) }
-    val readKeys by produceState(emptySet<String>(), editions, ticks) {
-        value = editions.map { it.key }.filter { store.marks.isEditionRead(it) }.toSet()
+    val readKeys by produceState(emptySet<String>(), editions, unread, ticks) {
+        value = editions.filter { e ->
+            val read = store.marks.readStories(e.key)
+            store.marks.isEditionRead(e.key) || e.storyIds.all { dobra.store.Keys.item(e.key, it) in read }
+        }.map { it.key }.toSet()
     }
     var confirm by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -230,7 +273,7 @@ private fun MagazinePage(
                 read = e.key in readKeys,
                 confirming = confirm == "ed:${e.key}",
                 onOpen = { onOpenEdition(e.key) },
-                onToggle = { scope.launch { store.marks.setEditionRead(e.key, e.key !in readKeys); ticks++ } },
+                onToggle = { scope.launch { setEditionRead(store, e, e.key !in readKeys); ticks++ } },
                 onAsk = { confirm = "ed:${e.key}" },
                 onYes = {
                     confirm = null
@@ -408,11 +451,11 @@ private fun PromptForm(store: Store, id: String, go: (String) -> Unit) {
 }
 
 private val DraftSaver = listSaver<RecipeDraft, Any>(
-    save = { listOf(it.name, it.about, it.subjects, it.keywords, it.language, it.tone, it.prompt, it.weekly, it.hour) },
+    save = { listOf(it.name, it.about, it.subjects, it.keywords, it.language, it.tone, it.prompt, it.weekly, it.hour, it.minimumItems, it.targetItems) },
     restore = {
         RecipeDraft(
             it[0] as String, it[1] as String, it[2] as String, it[3] as String, it[4] as String,
-            it[5] as String, it[6] as String, it[7] as Boolean, it[8] as String,
+            it[5] as String, it[6] as String, it[7] as Boolean, it[8] as String, it[9] as String, it[10] as String,
         )
     },
 )
@@ -454,6 +497,10 @@ private fun MagazineForm(store: Store, id: String?, go: (String) -> Unit) {
         }
         Field(stringResource(R.string.form_prompt), draft.prompt, "field-prompt", { draft = draft.copy(prompt = it) }, singleLine = false)
         Meta(stringResource(R.string.form_prompt_hint))
+        Field(stringResource(R.string.form_minimum_items), draft.minimumItems, "field-minimum-items", { draft = draft.copy(minimumItems = it) }, numeric = true)
+        Field(stringResource(R.string.form_target_items), draft.targetItems, "field-target-items", { draft = draft.copy(targetItems = it) }, numeric = true)
+        Meta(stringResource(R.string.form_items_hint))
+        if (tried && !draft.quantitiesValid) Meta(stringResource(R.string.form_error_items), "form-error-items")
         Meta(stringResource(R.string.form_cadence))
         FlowChoices {
             Choice(stringResource(R.string.form_cadence_daily), !draft.weekly, "field-cadence-daily") { draft = draft.copy(weekly = false) }

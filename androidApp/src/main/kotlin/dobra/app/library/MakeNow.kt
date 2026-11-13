@@ -33,6 +33,7 @@ internal fun MakeNow(magazine: Magazine, runner: MakeRunner, onOpenEdition: (Str
         is RunState.Missing -> Body(missingText(s.what), "$tag-missing")
         is RunState.Failed -> Body(failText(s), "$tag-failure")
         is RunState.Done -> if (!compact) MakeDone(s.result, onOpenEdition) else {
+            s.result.quantityNote?.let { Body(it, "$tag-quantity") }
             s.result.edition?.let { edition ->
                 Btn(stringResource(R.string.make_done_title, edition.number), "$tag-open") { onOpenEdition(edition.key) }
             } ?: Body(stringResource(R.string.make_nothing_written), "$tag-no-edition")
@@ -73,6 +74,7 @@ private fun MakeDone(r: MakeResult, onOpenEdition: (String) -> Unit) {
         )
         if (r.cost.calls > 0) Meta(stringResource(R.string.make_cost, dollars(r.cost.costUsd), r.cost.calls), "make-cost")
     }
+    r.quantityNote?.let { Body(it, "make-quantity") }
     LeftOutList(r.leftOut, "make-left")
 }
 

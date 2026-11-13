@@ -19,11 +19,16 @@ data class RecipeDraft(
     val prompt: String = "",
     val weekly: Boolean = false,
     val hour: String = "7",
+    val minimumItems: String = "5",
+    val targetItems: String = "10",
 ) {
     /** The hour as typed, or null when it is not a whole number from 0 to 23. */
     val hourValue: Int? get() = hour.trim().toIntOrNull()?.takeIf { it in 0..23 }
 
-    val valid: Boolean get() = name.isNotBlank() && hourValue != null
+    val minimumValue: Int? get() = minimumItems.trim().toIntOrNull()?.takeIf { it in 1..40 }
+    val targetValue: Int? get() = targetItems.trim().toIntOrNull()?.takeIf { it in 1..40 }
+    val quantitiesValid: Boolean get() = minimumValue != null && targetValue != null && minimumValue!! <= targetValue!!
+    val valid: Boolean get() = name.isNotBlank() && hourValue != null && quantitiesValid
 
     companion object {
         fun of(m: Magazine) = RecipeDraft(
@@ -36,6 +41,8 @@ data class RecipeDraft(
             prompt = m.prompt,
             weekly = m.cadence.kind == CadenceKind.WEEKLY,
             hour = m.cadence.hour.toString(),
+            minimumItems = m.minimumItems.toString(),
+            targetItems = m.targetItems.toString(),
         )
     }
 }
@@ -75,6 +82,8 @@ fun RecipeDraft.applyTo(base: Magazine?, newId: String): Magazine {
         language = language,
         tone = tone,
         prompt = prompt.trim(),
+        minimumItems = minimumValue ?: old.minimumItems,
+        targetItems = targetValue ?: old.targetItems,
         cadence = Cadence(kind, hourValue ?: old.cadence.hour, if (kind == CadenceKind.WEEKLY) old.cadence.weekday ?: 1 else null),
     )
 }

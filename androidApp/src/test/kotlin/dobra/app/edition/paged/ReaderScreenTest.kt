@@ -2,6 +2,7 @@ package dobra.app.edition.paged
 
 import android.provider.Settings
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -19,6 +20,12 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.swipeRight
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import dobra.app.edition.FakeMarks
+import dobra.app.edition.ImageLoader
+import dobra.app.edition.LocalImageLoader
+import dobra.store.Keys
+import dobra.store.Feedback
+import androidx.compose.ui.test.performScrollTo
 import dobra.app.edition.EditionFixture
 import dobra.app.shell.AppTheme
 import dobra.model.ItemKind
@@ -43,17 +50,21 @@ class ReaderScreenTest {
     private var mode by mutableStateOf(ReadingMode.BOOK)
     private var previewView: android.view.View? = null
 
-    private fun show(start: ReadingMode = ReadingMode.BOOK) {
+    private fun show(start: ReadingMode = ReadingMode.BOOK, marks: FakeMarks? = null) {
         mode = start
         compose.setContent {
             previewView = androidx.compose.ui.platform.LocalView.current
-            AppTheme { ReaderScreen(magazine, edition, mode, onMode = { mode = it }, onBackToLibrary = {}) }
+            AppTheme {
+                CompositionLocalProvider(LocalImageLoader provides ImageLoader { null }) {
+                    ReaderScreen(magazine, edition, mode, marks = marks, onMode = { mode = it }, onBackToLibrary = {})
+                }
+            }
         }
         compose.waitForIdle()
     }
 
     private fun text(tag: String): String =
-        compose.onNodeWithTag(tag).fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("").orEmpty()
+        compose.onNodeWithTag(tag, useUnmergedTree = tag == "pager-label").fetchSemanticsNode().config.getOrNull(SemanticsProperties.Text)?.joinToString("").orEmpty()
 
     private fun count() = text("pager-count")
 
@@ -75,10 +86,19 @@ class ReaderScreenTest {
     }
 
     private fun openFromContents(id: String) {
-        // The contents are the page after the cover.
-        if (tagCount("toc-$id") == 0) compose.onNodeWithTag("page-next").performClick()
+        compose.onNodeWithTag("reader-contents").performClick()
         compose.waitForIdle()
-        compose.onNodeWithTag("toc-$id").performClick()
+        if (mode != ReadingMode.SCROLL) {
+            repeat(8) {
+                if (tagCount("toc-$id") == 0) {
+                    compose.onNodeWithTag("page-next").performClick()
+                    compose.waitForIdle()
+                }
+            }
+        }
+        val entry = compose.onNodeWithTag("toc-$id")
+        if (mode == ReadingMode.SCROLL) entry.performScrollTo()
+        entry.performClick()
         compose.waitForIdle()
     }
 
@@ -197,6 +217,36 @@ class ReaderScreenTest {
             assertEquals(story.shortLabel(), text("pager-label"))
             assertStoryOnScreen(story.id)
         }
+    }
+
+    @Test
+    @Config(qualifiers = "w384dp-h800dp")
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    fun contentsShortcutReachesTheLastNoteAndFeedbackFromAnyReadingMode() {
+        val marks = FakeMarks()
+        show(marks = marks)
+        assertTrue("cover and hidden measurement must not mark articles", marks.read.isEmpty())
+        val note = edition.items.last { it.kind == ItemKind.NOTE }
+        openFromContents(note.id)
+        assertStoryOnScreen(note.id)
+        assertTrue(Keys.item(edition.key, note.id) in marks.read)
+        val ask = compose.onNodeWithTag("ask-${note.id}").getUnclippedBoundsInRoot()
+        val save = compose.onNodeWithTag("save-${note.id}").getUnclippedBoundsInRoot()
+        assertEquals(ask.bottom - ask.top, save.bottom - save.top)
+        assertEquals(ask.right - ask.left, save.right - save.left)
+        preview("reader-note")
+        compose.onNodeWithTag("more-${note.id}").performClick()
+        compose.waitForIdle()
+        assertEquals(Feedback.MORE, marks.feedbacks[Keys.item(edition.key, note.id)])
+        openFromContents(stories.first().id)
+        assertStoryOnScreen(stories.first().id)
+        compose.onNodeWithTag("mode-chip").performClick()
+        compose.waitForIdle()
+        assertEquals(ReadingMode.SCROLL, mode)
+        openFromContents(note.id)
+        assertStoryOnScreen(note.id)
+        openFromContents(stories.first().id)
+        assertStoryOnScreen(stories.first().id)
     }
 
     @Test

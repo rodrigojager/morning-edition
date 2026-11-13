@@ -105,6 +105,32 @@ class StoreTest {
     }
 
     @Test
+    fun bundledV1CollectorsUpgradeWithoutChangingReaderCollectorsInstructionsOrQuantitySettings() = runBlocking {
+        var store = open(withSeed = false)
+        val starter = seed()
+        val custom = CollectorInfo("function collect(){return {records:[]};}", 7, "2026-11-13", "reader")
+        val sources = starter.magazine.sources.map { source -> source.copy(collector =
+            if (source.id == "dev") custom else source.collector?.copy(version = 1)) }
+        val edited = store.magazines.save(starter.magazine.copy(prompt = "My practical-only rules", minimumItems = 6, targetItems = 12, sources = sources))
+        store.close()
+        opened.remove(store)
+        BundledSQLiteDriver().open(File(root, "dobra.db").path).use { db ->
+            db.prepare("INSERT INTO setting (key, value) VALUES ('seeded', '1')").use { it.step() }
+            db.prepare("INSERT INTO setting (key, value) VALUES ('starter_collectors_v1', '1')").use { it.step() }
+        }
+        store = open()
+        val upgraded = store.magazines.get(edited.id)!!
+        assertEquals(edited.prompt, upgraded.prompt)
+        assertEquals(6, upgraded.minimumItems)
+        assertEquals(12, upgraded.targetItems)
+        assertEquals(custom, upgraded.sources.first { it.id == "dev" }.collector)
+        listOf("github-trending", "hacker-news").forEach { id ->
+            assertEquals(2, upgraded.sources.first { it.id == id }.collector!!.version)
+        }
+        assertEquals(upgraded, reopen(store).magazines.get(edited.id))
+    }
+
+    @Test
     fun savedItemKeepsItsOwnCopyAfterItsEditionIsDeleted() = runBlocking {
         val store = open()
         val mag = store.magazines.all().single()

@@ -9,7 +9,7 @@ internal object StarterCollectors {
     fun attach(magazine: Magazine): Magazine = magazine.copy(sources = magazine.sources.map { source ->
         val script = scripts[source.id]
         if (source.collector != null || script == null) source else source.copy(
-            collector = CollectorInfo(script, version = 1, writtenAt = "2026-11-13", model = "bundled"),
+            collector = CollectorInfo(script, version = if (source.id in setOf("github-trending", "dev", "hacker-news")) 2 else 1, writtenAt = "2026-11-13", model = "bundled"),
             lastRun = null, cursor = null,
             // The saved Apiiro page is a JavaScript shell; do not present that collector as working.
             health = if (source.id == "blog-da-apiiro") SourceHealth.REPAIRING else SourceHealth.WORKING,
@@ -63,18 +63,36 @@ internal object StarterCollectors {
     private val scripts = mapOf(
         "github-trending" to script("""
             async function collect(input) {
-              const html = await load(input.url), records = [];
-              for (const m of html.matchAll(/<article\b[^>]*class="[^"]*Box-row[^"]*"[^>]*>([\s\S]*?)<\/article>/g)) {
-                const b=m[1], h=b.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/), a=h && h[1].match(/href="(\/[^"?#]+\/[^"?#]+)"/);
-                if (!a) continue;
-                const p=b.match(/<p\b[^>]*>([\s\S]*?)<\/p>/);
-                records.push({title:a[1].slice(1),link:'https://github.com'+a[1],date:'',rawText:p?text(p[1]):''});
+              const periods = input.cursor === 'monthly' ? ['monthly'] : ['daily','weekly'];
+              const records = [];
+              for (const period of periods) {
+                const url = period === 'daily' ? input.url.split('?')[0] : input.url.split('?')[0]+'?since='+period;
+                let html;
+                try { html = await load(url); } catch(e) { continue; }
+                for (const m of html.matchAll(/<article\b[^>]*class="[^"]*Box-row[^"]*"[^>]*>([\s\S]*?)<\/article>/g)) {
+                  const b=m[1], h=b.match(/<h2\b[^>]*>([\s\S]*?)<\/h2>/), a=h && h[1].match(/href="(\/[^"?#]+\/[^"?#]+)"/);
+                  if (!a) continue;
+                  const p=b.match(/<p\b[^>]*>([\s\S]*?)<\/p>/);
+                  records.push({title:a[1].slice(1),link:'https://github.com'+a[1],date:'',rawText:(p?text(p[1]):'')+' Trending '+period});
+                }
               }
               if (!records.length) throw new Error('GitHub Trending returned no repository cards');
-              return result(records);
+              return {...result(records), cursor:input.cursor === 'monthly' ? null : 'monthly'};
             }
         """),
-        "hacker-news" to rss("https://news.ycombinator.com/rss"),
+        "hacker-news" to script("""
+            async function collect(input) {
+              if (!input.cursor) return {...result(feed(await load('https://news.ycombinator.com/rss'))), cursor:'2'};
+              const page = Math.min(3, Math.max(2, Number(input.cursor) || 2));
+              const html = await load('https://news.ycombinator.com/news?p='+page), records=[];
+              for (const m of html.matchAll(/<span\b[^>]*class=["']titleline["'][^>]*>\s*<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/g)) {
+                const link=decode(m[1]);
+                records.push({title:text(m[2]),link:/^https?:\/\//.test(link)?link:'https://news.ycombinator.com/'+link.replace(/^\//,''),date:'',rawText:text(m[2])});
+              }
+              if (!records.length) throw new Error('Hacker News returned no story links');
+              return {...result(records),cursor:page<3?String(page+1):null};
+            }
+        """),
         "lobsters" to script("""
             async function collect(input) {
               const items=JSON.parse(await load('https://lobste.rs/hottest.json'));
@@ -83,8 +101,9 @@ internal object StarterCollectors {
         """),
         "dev" to script("""
             async function collect(input) {
-              const items=JSON.parse(await load('https://dev.to/api/articles?top=7&per_page=40'));
-              return result(items.map(r => ({title:r.title,link:r.url,date:r.published_at || '',rawText:text(r.description)+' '+(r.tag_list || []).join(' '),signal:r.public_reactions_count})));
+              const page = Math.min(3, Math.max(1, Number(input.cursor) || 1));
+              const items=JSON.parse(await load('https://dev.to/api/articles?top=7&per_page=40'+(page===1?'':'&page='+page)));
+              return {...result(items.map(r => ({title:r.title,link:r.url,date:r.published_at || '',rawText:text(r.description)+' '+(r.tag_list || []).join(' '),signal:r.public_reactions_count}))), cursor:items.length && page<3 ? String(page+1) : null};
             }
         """),
         "reddit-rss" to script("""

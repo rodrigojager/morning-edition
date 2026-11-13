@@ -22,6 +22,8 @@ class StarterCollectorsTest {
     private fun page(name: String) = FetchResponse(200, File("fixtures/starter/$name").readText())
     private val pages = mapOf(
         "https://github.com/trending" to page("github-trending.html"),
+        "https://github.com/trending?since=weekly" to page("github-trending.html"),
+        "https://github.com/trending?since=monthly" to page("github-trending.html"),
         "https://news.ycombinator.com/rss" to page("hacker-news.xml"),
         "https://lobste.rs/hottest.json" to page("lobsters.json"),
         "https://dev.to/api/articles?top=7&per_page=40" to page("dev.json"),
@@ -78,4 +80,36 @@ class StarterCollectorsTest {
         assertEquals(3, run.fetches.size)
         assertEquals(2, run.fetches.count { it.status == 429 })
     }
+    @Test
+    fun githubCombinesDailyAndWeeklyAndOffersMonthlyWithoutRepeatingRepositories() = runBlocking {
+        val source = magazine.sources.first { it.id == "github-trending" }
+        val weekly = pages.getValue(source.url).copy(body = pages.getValue(source.url).body.replace("alibaba/open-code-review", "community/new-cli"))
+        val engine = CollectorEngine(SavedPages(pages + ("https://github.com/trending?since=weekly" to weekly)))
+        val first = engine.run(source.collector!!.script, CollectorInput(source.url, emptyList()))
+        assertEquals(3, first.kept.size)
+        assertEquals("monthly", first.cursor)
+        val more = engine.run(source.collector!!.script, CollectorInput(source.url, emptyList(), first.cursor))
+        assertEquals(2, more.kept.size)
+        assertEquals(null, more.cursor)
+        assertEquals(listOf("https://github.com/trending?since=monthly"), more.fetches.map { it.url })
+    }
+
+    @Test
+    fun hackerNewsContinuesWithPrimaryLinksAndApiiro403RemainsAnExplicitFailure() = runBlocking {
+        val hn = magazine.sources.first { it.id == "hacker-news" }
+        val html = "<span class=\"titleline\"><a href=\"https://github.com/community/tool\">Useful CLI</a></span>"
+        val engine = CollectorEngine(SavedPages(pages + mapOf(
+            "https://news.ycombinator.com/news?p=2" to FetchResponse(200, html),
+            "https://apiiro.com/blog" to FetchResponse(403, "Forbidden"),
+        )))
+        val next = engine.run(hn.collector!!.script, CollectorInput(hn.url, emptyList(), "2"))
+        assertEquals("https://github.com/community/tool", next.kept.single().link)
+        assertEquals("3", next.cursor)
+        val result = CollectionWorker(engine, MemoryCursorStore(), PublishedLinks { emptySet() }).collect(magazine)
+        val apiiro = result.results.first { it.sourceId == "blog-da-apiiro" }
+        assertEquals(403, apiiro.refusedStatus)
+        assertEquals(CollectionState.FAILED, apiiro.state)
+        assertTrue(apiiro.fresh.isEmpty())
+    }
+
 }

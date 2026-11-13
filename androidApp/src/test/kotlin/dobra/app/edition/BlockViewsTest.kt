@@ -278,7 +278,7 @@ class BlockViewsTest {
     }
 
     @Test
-    fun everyShortNoteHasItsOwnSalvar() {
+    fun everyShortNoteHasSavingFeedbackAndReadState() {
         val marks = FakeMarks()
         showEdition(marks = marks)
         val note = notes[0]
@@ -288,7 +288,13 @@ class BlockViewsTest {
         compose.waitForIdle()
         compose.onNode(hasText("Salva") and hasTestTag("save-${note.id}")).assertExists()
         assertEquals(listOf(Keys.item(edition.key, note.id)), marks.savedKeys)
-        assertFalse(Keys.item(edition.key, note.id) in marks.read)
+        assertTrue(Keys.item(edition.key, note.id) in marks.read)
+        compose.onNodeWithTag("more-${note.id}").performClick()
+        compose.waitForIdle()
+        assertEquals(Feedback.MORE, marks.feedbacks[Keys.item(edition.key, note.id)])
+        compose.onNodeWithTag("less-${note.id}").performClick()
+        compose.waitForIdle()
+        assertEquals(Feedback.LESS, marks.feedbacks[Keys.item(edition.key, note.id)])
     }
 
     // ---- plates ----

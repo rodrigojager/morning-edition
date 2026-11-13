@@ -51,7 +51,9 @@ suspend fun openStore(root: String, seed: (() -> SeedContent)? = null): Store {
                 val bundled = content.magazine.sources.associateBy { it.id }
                 store.magazines.save(current.copy(sources = current.sources.map { source ->
                     val starter = bundled[source.id]
-                    if (source.collector != null || starter?.collector == null || starter.url != source.url) source
+                    val installed = source.collector
+                    val upgrade = installed == null || (installed.model == "bundled" && installed.version < (starter?.collector?.version ?: 0))
+                    if (!upgrade || starter?.collector == null || starter.url != source.url) source
                     else source.copy(collector = starter.collector, lastRun = null, cursor = null, health = starter.health)
                 }))
             }
@@ -62,7 +64,7 @@ suspend fun openStore(root: String, seed: (() -> SeedContent)? = null): Store {
 }
 
 private const val SEEDED = "seeded"
-private const val STARTER_COLLECTORS = "starter_collectors_v1"
+private const val STARTER_COLLECTORS = "starter_collectors_v2"
 private const val SCHEMA_VERSION = 1
 
 // Mark kinds (the first part of the primary key of the marks table).

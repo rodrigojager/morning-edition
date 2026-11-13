@@ -65,6 +65,7 @@ data class MakeResult(
     val considered: Int,
     val problem: MakeProblem? = null,
     val attempts: List<Attempt> = emptyList(),
+    val quantityNote: String? = null,
 )
 
 /** One item the AI chose to write, from one or more records. */
@@ -91,63 +92,103 @@ class EditionMaker(
 ) {
     private val loop = RewriteLoop(gateway, maxAttempts)
 
-    suspend fun make(magazine: Magazine, run: WorkerResult, onProgress: (MakeProgress) -> Unit = {}): MakeResult {
+    suspend fun make(
+        magazine: Magazine,
+        run: WorkerResult,
+        collectMore: (suspend (WorkerResult) -> WorkerResult?)? = null,
+        onProgress: (MakeProgress) -> Unit = {},
+    ): MakeResult {
         val date = freeDate(magazine.id, today())
         val key = Keys.edition(magazine.id, date)
         val spent = ledger.spentSince(key)
         val stored = editions.list(magazine.id).mapNotNull { editions.get(it.key) }
         val brief = briefOf(magazine, stored)
         val records = recordsOf(magazine, run, brief.published)
-        if (records.isEmpty()) return MakeResult(null, emptyList(), spent(), 0, MakeProblem.NOTHING_COLLECTED)
 
-        // 1. Filter.
-        onProgress(MakeProgress(MakeStage.CHOOSING, 0, 1))
-        val byRef = records.associateBy { it.ref }
-        val chosen = loop.run(Prompts.FILTER_SYSTEM, Prompts.filter(brief, records, maxItems), key) { judgeSelection(it, byRef) }
-        val attempts = ArrayList(chosen.attempts)
-        val selection = when (chosen) {
-            is LoopResult.Done -> chosen.value
-            else -> return MakeResult(null, emptyList(), spent(), records.size, MakeProblem.SELECTION_UNREADABLE, attempts)
-        }
-        val leftOut = ArrayList(selection.leftOut)
-        val picks = selection.keep.take(maxItems)
-        selection.keep.drop(maxItems).forEach { leftOut += leftOutOf(it, "Ficou de fora para a edição não passar de $maxItems matérias.") }
-
-        // 2-3. Read the primary page and write each kept item.
+        val target = magazine.targetItems.coerceIn(1, maxItems)
+        val minimum = magazine.minimumItems.coerceIn(1, target)
+        val pending = records.toMutableList()
+        val seen = records.map { Verification.normalize(it.record.link) }.toMutableSet()
+        val attempts = ArrayList<Attempt>()
+        val leftOut = ArrayList<LeftOut>()
         val items = ArrayList<Item>()
-        picks.forEachIndexed { index, pick ->
-            onProgress(MakeProgress(MakeStage.WRITING, index, picks.size, pick.refs.first().record.title))
-            val outcome = try {
-                write(brief, pick, stored, key)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: AiException.KeyRefused) {
-                throw e
-            } catch (e: AiException.NotConfigured) {
-                throw e
-            } catch (e: AiException) {
-                val reason = when (e) {
-                    is AiException.Unreachable -> "A conexão com a IA falhou mesmo após novas tentativas. Esta matéria não foi publicada e pode ser selecionada em uma próxima edição."
-                    is AiException.RateLimited -> "O provedor de IA limitou as chamadas. Esta matéria pode ser selecionada em uma próxima edição."
-                    else -> "A IA não conseguiu concluir esta matéria: ${e.message}."
+        var collection = run
+        var latest = run
+        var considered = 0
+        var nextRef = records.size
+        var batches = 0
+        var fetchRounds = 1
+        var selectionFailed = false
+        while (items.size < target && batches < MAX_BATCHES) {
+            if (pending.isEmpty()) {
+                if (fetchRounds >= MAX_COLLECTION_ROUNDS) break
+                val more = collectMore?.invoke(latest) ?: break
+                fetchRounds++
+                latest = more
+                collection = mergeCollections(collection, more)
+                recordsOf(magazine, more, brief.published).forEach { r ->
+                    if (seen.add(Verification.normalize(r.record.link))) pending += r.copy(ref = "r${++nextRef}")
                 }
-                leftOut += leftOutOf(pick, reason)
-                return@forEachIndexed
+                if (pending.isEmpty()) continue
             }
-            attempts += outcome.attempts
-            when (outcome) {
-                is LoopResult.Done -> items += outcome.value.copy(id = uniqueId(outcome.value.id, items))
-                is LoopResult.Skipped -> leftOut += leftOutOf(pick, outcome.reason)
-                is LoopResult.Failed -> leftOut += leftOutOf(
-                    pick,
-                    "Ficou de fora: depois de ${outcome.attempts.size} tentativas o texto ainda não passava na " +
-                        "verificação do formato (${outcome.faults.joinToString("; ")}).",
-                )
+            val batch = pending.take(MAX_RECORDS)
+            pending.subList(0, batch.size).clear()
+            batches++
+            considered += batch.size
+            onProgress(MakeProgress(MakeStage.CHOOSING, 0, 1))
+            val byRef = batch.associateBy { it.ref }
+            val prompt = Prompts.filter(brief, batch, target - items.size) +
+                "\n# Completion\nAlready written: ${items.size}. Desired minimum: $minimum. Target: $target. " +
+                "Choose enough eligible NEW items from this batch to approach the target. " +
+                "Several items from one productive source are welcome. Never fill with excluded content or repeat a published item without an evidenced update."
+            val chosen = loop.run(Prompts.FILTER_SYSTEM, prompt, key) { judgeSelection(it, byRef) }
+            attempts += chosen.attempts
+            val selection = (chosen as? LoopResult.Done)?.value
+            if (selection == null) { selectionFailed = true; break }
+            leftOut += selection.leftOut
+            val picks = selection.keep.take(target - items.size)
+            picks.forEachIndexed { index, pick ->
+                onProgress(MakeProgress(MakeStage.WRITING, index, picks.size, pick.refs.first().record.title))
+                val outcome = try {
+                    write(brief, pick, stored, key)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: AiException.KeyRefused) {
+                    throw e
+                } catch (e: AiException.NotConfigured) {
+                    throw e
+                } catch (e: AiException) {
+                    val reason = when (e) {
+                        is AiException.Unreachable -> "A conexão com a IA falhou mesmo após novas tentativas. Esta matéria não foi publicada e pode ser selecionada em uma próxima edição."
+                        is AiException.RateLimited -> "O provedor de IA limitou as chamadas. Esta matéria pode ser selecionada em uma próxima edição."
+                        else -> "A IA não conseguiu concluir esta matéria: ${e.message}."
+                    }
+                    leftOut += leftOutOf(pick, reason)
+                    return@forEachIndexed
+                }
+                attempts += outcome.attempts
+                when (outcome) {
+                    is LoopResult.Done -> items += outcome.value.copy(id = uniqueId(outcome.value.id, items))
+                    is LoopResult.Skipped -> leftOut += leftOutOf(pick, outcome.reason)
+                    is LoopResult.Failed -> leftOut += leftOutOf(pick,
+                        "Ficou de fora: depois de ${outcome.attempts.size} tentativas o texto ainda não passava na " +
+                            "verificação do formato (${outcome.faults.joinToString("; ")}).")
+                }
             }
+            onProgress(MakeProgress(MakeStage.WRITING, picks.size, picks.size))
         }
-        onProgress(MakeProgress(MakeStage.WRITING, picks.size, picks.size))
+        val shortage = if (items.size >= target) null else {
+            val achieved = if (items.size < minimum) "abaixo do mínimo desejado de $minimum" else "mínimo de $minimum atingido"
+            val end = when {
+                selectionFailed -> "a IA não concluiu a seleção"
+                batches >= MAX_BATCHES || fetchRounds >= MAX_COLLECTION_ROUNDS -> "o limite de buscas desta geração foi atingido"
+                else -> "as fontes não ofereceram mais candidatos novos e adequados"
+            }
+            "${items.size} de $target itens: $achieved; $end. Não foi usado conteúdo fora das suas instruções para completar a meta."
+        }
         if (items.isEmpty()) {
-            return MakeResult(null, leftOut, spent(), records.size, MakeProblem.NOTHING_WRITTEN, attempts)
+            return MakeResult(null, leftOut, spent(), considered,
+                if (selectionFailed) MakeProblem.SELECTION_UNREADABLE else if (considered == 0) MakeProblem.NOTHING_COLLECTED else MakeProblem.NOTHING_WRITTEN, attempts, shortage)
         }
 
         // 4. Store the edition with what was left out.
@@ -158,15 +199,15 @@ class EditionMaker(
             number = (stored.maxOfOrNull { it.number } ?: 0) + 1,
             recipeVersion = magazine.version,
             items = items,
-            collection = run.collection,
+            collection = collection.collection,
             leftOut = leftOut,
             state = EditionState.PUBLISHED,
         )
         val ok = editions.put(edition)
         onProgress(MakeProgress(MakeStage.SAVING, 1, 1))
         return MakeResult(
-            if (ok) edition else null, leftOut, spent(), records.size,
-            if (ok) null else MakeProblem.REFUSED_BY_STORE, attempts,
+            if (ok) edition else null, leftOut, spent(), considered,
+            if (ok) null else MakeProblem.REFUSED_BY_STORE, attempts, shortage,
         )
     }
 
@@ -219,9 +260,16 @@ class EditionMaker(
         marks?.feedbackOf(m.id)?.forEach { (itemKey, feedback) ->
             val editionKey = itemKey.substringBeforeLast('/')
             val id = itemKey.substringAfterLast('/')
-            val title = stored.firstOrNull { it.key == editionKey }?.items?.firstOrNull { it.id == id }
-                ?.let { ItemRules.titleOf(it.blocks) } ?: return@forEach
-            if (feedback == Feedback.MORE) liked += title else disliked += title
+            val item = stored.firstOrNull { it.key == editionKey }?.items?.firstOrNull { it.id == id } ?: return@forEach
+            val title = ItemRules.titleOf(item.blocks) ?: return@forEach
+            val links = Verification.addressesOf(item).first.map { Verification.normalize(it).substringBefore('?') }.toSet()
+            val discovery = m.sources.filter { source ->
+                val address = Verification.normalize(source.url).substringBefore('?')
+                val rootAddress = '/' !in address.substringAfter("://")
+                links.any { it == address || (rootAddress && it.startsWith("$address/")) }
+            }.map { it.name }
+            val preference = title + if (discovery.isEmpty()) "" else " (discovered via ${discovery.joinToString()})"
+            if (feedback == Feedback.MORE) liked += preference else disliked += preference
         }
         return Brief(
             magazine = m,
@@ -240,11 +288,23 @@ class EditionMaker(
             RecordRef("", it.sourceName, urlById[it.sourceId], it.record, Verification.normalize(it.record.link) in done)
         }
         val again = run.candidates.map { RecordRef("", it.source, urlByName[it.source], it.record, publishedBefore = true) }
-        return (fresh + again)
-            .distinctBy { Verification.normalize(it.record.link) }
-            .take(MAX_RECORDS)
-            .mapIndexed { i, r -> r.copy(ref = "r${i + 1}") }
+        // Round-robin prevents a busy early source from hiding every later source in a bounded prompt.
+        val groups = (fresh + again).groupBy { it.sourceName }.values.map { it.iterator() }
+        val balanced = buildList {
+            while (groups.any { it.hasNext() }) groups.forEach { if (it.hasNext()) add(it.next()) }
+        }
+        return balanced.distinctBy { Verification.normalize(it.record.link) }
+            .take(MAX_RECORDS * MAX_BATCHES).mapIndexed { i, r -> r.copy(ref = "r${i + 1}") }
     }
+
+    private fun mergeCollections(first: WorkerResult, more: WorkerResult) = WorkerResult(first.magazine,
+        (first.results + more.results).groupBy { it.sourceId }.values.map { runs ->
+            val last = runs.last()
+            val fresh = runs.flatMap { it.fresh }.distinctBy { Verification.normalize(it.link) }
+            val candidates = runs.flatMap { it.candidates }.distinctBy { Verification.normalize(it.link) }
+            last.copy(fresh = fresh, candidates = candidates, kept = fresh.size + candidates.size,
+                returned = runs.sumOf { it.returned })
+        })
 
     private suspend fun freeDate(magazine: String, day: String): String {
         var date = day
@@ -270,11 +330,13 @@ class EditionMaker(
     }
 
     companion object {
-        /** Three to eight good items are better than filling a quota (PLAN-ai). */
-        const val MAX_ITEMS = 8
+        /** Safety ceiling; the recipe chooses the desired minimum and target below it. */
+        const val MAX_ITEMS = 40
 
-        /** Records sent to the selection, at most; the worker's order is kept. */
-        const val MAX_RECORDS = 80
+        /** Records per selection prompt, balanced across sources. */
+        const val MAX_RECORDS = 160
+        const val MAX_BATCHES = 3
+        const val MAX_COLLECTION_ROUNDS = 3
         const val MAX_FEEDBACK = 10
 
         /** Reads the selection answer: `{"keep": [{"records": [...], "kind", "update"}], "leftOut": [...]}`. */
@@ -325,6 +387,17 @@ class EditionMaker(
 class EditionPipeline(private val collector: MagazineCollector, private val maker: EditionMaker) {
     suspend fun run(magazine: Magazine, onProgress: (MakeProgress) -> Unit = {}): MakeResult {
         val run = collector.collect(magazine) { onProgress(MakeProgress(MakeStage.COLLECTING, it.done, it.total, it.current)) }
-        return maker.make(magazine, run, onProgress)
+        val continuations = mutableSetOf<String>()
+        return maker.make(magazine, run, collectMore = { previous ->
+            // Retry only explicit, not-yet-used continuations. Never retry a 403/429 or reload an unchanged feed.
+            val eligible = previous.results.filter { result ->
+                result.ran && result.refusedStatus == null && result.state != dobra.model.CollectionState.FAILED &&
+                    result.cursor != null && continuations.add("${result.sourceId}:${result.cursor}")
+            }.map { it.sourceId }.toSet()
+            val sources = magazine.sources.filter { it.id in eligible }
+            if (sources.isEmpty()) null else collector.collect(magazine.copy(sources = sources)) {
+                onProgress(MakeProgress(MakeStage.COLLECTING, it.done, it.total, it.current))
+            }
+        }, onProgress = onProgress)
     }
 }

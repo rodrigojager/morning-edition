@@ -113,11 +113,6 @@ fun ReaderScreen(
     if (mode != ReadingMode.SCROLL && mode != lastPaged) lastPaged = mode
     val instant = animationsOff()
 
-    LaunchedEffect(position.chapter, marks) {
-        val id = position.chapter.removePrefix("story-")
-        if (id != position.chapter) marks?.setStoryRead(Keys.item(edition.key, id))
-    }
-
     BoxWithConstraints(modifier.fillMaxSize().testTag("reader")) {
         val wide = maxWidth >= BookMinWidth
         val shown = shownMode(mode, wide)
@@ -199,6 +194,15 @@ private fun PagedReader(
             screen = pagination.screenOf(currentPosition, perScreen)
         }
     }
+    LaunchedEffect(pagination, position, perScreen, marks) {
+        pagination?.let { p ->
+            // Only the pages on the visible spread count. Measurement and turn previews do not mark anything.
+            val visibleScreen = p.screenOf(position, perScreen)
+            (visibleScreen * perScreen until minOf((visibleScreen + 1) * perScreen, p.pages.size))
+                .mapNotNull { chapters.getOrNull(p.pages[it].chapter)?.story }.distinctBy { it.id }
+                .forEach { marks?.setStoryRead(Keys.item(edition.key, it.id)) }
+        }
+    }
     // One screen back or forward; the position follows the reader.
     val step: (Int) -> Unit = { dir ->
         pagination?.let { p ->
@@ -235,7 +239,8 @@ private fun PagedReader(
             PagedPagerBar(
                 pagination = pagination, perScreen = perScreen, screen = screen, mode = mode, count = count,
                 chapters = chapters, position = position, onStep = pagerStep,
-                onCycle = { chrome.touch(); onCycle() }, pinned = bars.pinned, onPin = bars.onPin,
+                onCycle = { chrome.touch(); onCycle() },
+                onContents = { chrome.show(); goChapter[0]?.invoke("toc") }, pinned = bars.pinned, onPin = bars.onPin,
             )
         },
         contentModifier = Modifier.statusBarsPadding(),
@@ -294,6 +299,7 @@ private fun PagedPagerBar(
     position: ReadingPosition,
     onStep: (Int) -> Unit,
     onCycle: () -> Unit,
+    onContents: () -> Unit,
     pinned: Boolean,
     onPin: () -> Unit,
 ) {
@@ -308,6 +314,7 @@ private fun PagedPagerBar(
         scroll = false,
         onStep = onStep,
         onCycle = onCycle,
+        onContents = onContents,
         pinned = pinned,
         onPin = onPin,
     )
@@ -420,6 +427,13 @@ private fun ScrollReader(
                     }
                 },
                 onCycle = { chrome.touch(); onCycle() },
+                onContents = {
+                    chrome.show()
+                    scope.launch {
+                        jumping[0] = true
+                        try { listState.scrollToItem(range("toc").first) } finally { jumping[0] = false }
+                    }
+                },
                 pinned = bars.pinned,
                 onPin = bars.onPin,
             )

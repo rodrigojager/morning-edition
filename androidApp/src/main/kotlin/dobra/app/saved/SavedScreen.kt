@@ -71,8 +71,7 @@ internal fun groupSaved(saved: List<SavedItem>): List<SavedGroup> =
     }
 
 /**
- * The Salvos tab: what the reader saved, by magazine and edition, and the reading of one edition with only its saved
- * items. Saved items keep their own copy, so they stay even when the edition or the magazine is deleted.
+ * The Salvos tab: saved items grouped by magazine and edition, with one reading across each magazine. Saved items keep their own copy, so they stay even when the edition or the magazine is deleted.
  */
 @Composable
 fun SavedScreen(store: Store? = null) {
@@ -87,7 +86,7 @@ fun SavedScreen(store: Store? = null) {
     if (open == null) {
         SavedList(store, saved, magazines) { reading = it }
     } else {
-        val items = saved.filter { it.editionKey() == open }
+        val items = saved.filter { it.magazineId() == open }.sortedByDescending { it.date() }
         if (items.isEmpty()) LaunchedEffect(Unit) { reading = null }
         else SavedOnlyReader(store, open, items, magazines.firstOrNull { it.id == items.first().magazineId() }) { reading = null }
     }
@@ -107,11 +106,13 @@ private fun SavedList(store: Store, saved: List<SavedItem>, magazines: List<Maga
                 name, color = LocalReaderColors.current.ink, fontFamily = AppFonts.display, fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp).testTag("saved-mag-${group.magazineId}"),
             )
+            BtnRow {
+                Btn(stringResource(R.string.saved_read_only), "saved-read-${group.magazineId}", primary = true) { onRead(group.magazineId) }
+            }
             group.editions.forEach { (editionKey, items) ->
                 Card("saved-edition-$editionKey") {
                     Meta(stringResource(R.string.saved_edition_date, editionKey.substringAfter('/')), "saved-date-$editionKey")
                     items.forEach { SavedRow(it) { scope.launch { store.marks.unsave(it.key) } } }
-                    BtnRow { Btn(stringResource(R.string.saved_read_only), "saved-read-$editionKey", primary = true) { onRead(editionKey) } }
                 }
             }
         }
@@ -141,11 +142,11 @@ private fun Item.label(): String {
 }
 
 /**
- * One edition read with only its saved items: the stories, then a chapter "Notas salvas". No cover, contents or
+ * One magazine read with its saved items across all editions: the stories, then a chapter "Notas salvas". No cover, contents or
  * backstage. Un-saving an item takes it out of this reading at once.
  */
 @Composable
-private fun SavedOnlyReader(store: Store, editionKey: String, items: List<SavedItem>, magazine: Magazine?, onBack: () -> Unit) {
+private fun SavedOnlyReader(store: Store, magazineId: String, items: List<SavedItem>, magazine: Magazine?, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val colors = LocalReaderColors.current
     val format = magazine?.format ?: Format()
@@ -155,7 +156,7 @@ private fun SavedOnlyReader(store: Store, editionKey: String, items: List<SavedI
         LazyColumn(Modifier.fillMaxWidth().statusBarsPadding().testTag("saved-reader")) {
             item(key = "head") {
                 Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Kicker(stringResource(R.string.saved_only_kicker, magazine?.name ?: editionKey.substringBefore('/'), editionKey.substringAfter('/')))
+                    Kicker(stringResource(R.string.saved_only_kicker, magazine?.name ?: magazineId))
                     BtnRow { Btn(stringResource(R.string.saved_back), "saved-back", onClick = onBack) }
                 }
             }

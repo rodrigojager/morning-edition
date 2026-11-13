@@ -1,13 +1,9 @@
 package dobra.app.edition.paged
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dobra.app.edition.BlockView
@@ -15,7 +11,6 @@ import dobra.app.edition.CoverContent
 import dobra.app.edition.EndMark
 import dobra.app.edition.ItemStoryActions
 import dobra.app.edition.LocalStoryNumber
-import dobra.app.edition.NoteSave
 import dobra.app.edition.NotesHeader
 import dobra.app.edition.TocRow
 import dobra.app.edition.TocTitle
@@ -24,6 +19,7 @@ import dobra.app.edition.headOf
 import dobra.app.edition.shownBlocks
 import dobra.app.edition.text
 import dobra.app.edition.title
+import dobra.app.edition.readingItems
 import dobra.model.Edition
 import dobra.model.Item
 import dobra.model.ItemKind
@@ -74,7 +70,7 @@ internal fun storyChapterId(item: Item) = "story-${item.id}"
 
 /**
  * The edition as chapters of pieces, the same flow as the scroll: the cover, the contents, one chapter per story, the
- * short notes together, the backstage with the end mark.
+ * one chapter per short note, the backstage with the end mark.
  */
 internal fun chaptersOf(magazine: Magazine, edition: Edition, actions: FlowActions): List<ChapterSpec> {
     val stories = edition.items.filter { it.kind == ItemKind.STORY }
@@ -94,14 +90,18 @@ internal fun chaptersOf(magazine: Magazine, edition: Edition, actions: FlowActio
         add(
             ChapterSpec(
                 "toc", null,
-                listOf(PieceSpec("toc-title") { TocTitle() }) + stories.mapIndexed { i, item ->
+                listOf(PieceSpec("toc-title") { TocTitle() }) + edition.readingItems().mapIndexed { i, item ->
                     PieceSpec("toc-${item.id}", space = if (i == 0) 12.dp else 0.dp) {
                         TocRow(i, item) { actions.onOpenChapter(storyChapterId(it)) }
                     }
                 },
             ),
         )
-        stories.forEachIndexed { n, item ->
+        edition.readingItems().forEachIndexed { n, item ->
+            if (item.kind == ItemKind.NOTE && item == notes.firstOrNull()) {
+                // Keep the old notes position valid while each note gets its own navigation target.
+                add(ChapterSpec("notes", null, listOf(PieceSpec("notes-header") { NotesHeader(padded = false) })))
+            }
             val itemKey = Keys.item(edition.key, item.id)
             val blocks = shownBlocks(item.blocks, format)
             val head = headOf(blocks)
@@ -109,7 +109,7 @@ internal fun chaptersOf(magazine: Magazine, edition: Edition, actions: FlowActio
             fun blockPiece(i: Int, b: dobra.model.Block) = PieceSpec(
                 "b$i-${b.type}", ruleOf(b.type), keepWithNext = b.type == "section", space = if (i == 0) 0.dp else 16.dp,
             ) {
-                CompositionLocalProvider(LocalStoryNumber provides n + 1) { BlockView(b) }
+                CompositionLocalProvider(LocalStoryNumber provides (if (item.kind == ItemKind.STORY) n + 1 else 0)) { BlockView(b) }
             }
             val pieces = buildList {
                 head.forEachIndexed { i, b -> add(blockPiece(i, b)) }
@@ -121,25 +121,6 @@ internal fun chaptersOf(magazine: Magazine, edition: Edition, actions: FlowActio
                 body.forEachIndexed { i, b -> add(blockPiece(head.size + i, b)) }
             }
             add(ChapterSpec(storyChapterId(item), item, pieces))
-        }
-        if (notes.isNotEmpty()) {
-            add(
-                ChapterSpec(
-                    "notes", null,
-                    listOf(PieceSpec("notes-header") { NotesHeader(padded = false) }) + notes.map { item ->
-                        val itemKey = Keys.item(edition.key, item.id)
-                        PieceSpec("note-${item.id}", space = 28.dp) {
-                            Column(
-                                Modifier.fillMaxWidth().testTag("chapter-${item.id}"),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
-                            ) {
-                                shownBlocks(item.blocks, format).forEach { BlockView(it) }
-                                NoteSave(item.id, actions.isSaved(itemKey)) { actions.onSave(item) }
-                            }
-                        }
-                    },
-                ),
-            )
         }
         val parts = backstageParts(edition.collection, edition.leftOut)
         add(
