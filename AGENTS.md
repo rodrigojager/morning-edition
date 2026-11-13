@@ -23,15 +23,50 @@ A Kotlin Multiplatform project with two modules: `shared` holds all logic (Andro
   `androidApp/build.gradle.kts`, `androidApp/src/main/AndroidManifest.xml`, `shell/AppNav.kt`, `shell/AppContainer.kt`.
   Add your lines to them; do not reorganise them.
 
+## Collector engine
+Collectors (one TypeScript script per source) run in `shared/.../dobra/collect/engine` (`CollectorEngine`).
+
+- **Engine: QuickJS through quickjs-kt** (`io.github.dokar3:quickjs-kt`, pinned in the catalog). Chosen because it is
+  one Kotlin Multiplatform library for Android, the JVM (Windows, Linux and macOS natives) and Kotlin/Native iOS;
+  the host defines functions the script calls (sync and suspending); it has a memory limit (`memoryLimit`) and
+  stops a busy script when the calling coroutine is cancelled (`withTimeout`), and its runtime has no file, network
+  or OS access (only the ECMAScript globals). Rejected: Rhino (JVM only, no iOS, no memory limit), Zipline (QuickJS too,
+  but built to load signed Kotlin/JS modules, much more than a script runner needs), J2V8/Javet (large native V8 per ABI, no iOS), GraalJS (no Android).
+- **Path to iOS:** add an iOS target to `shared`; quickjs-kt already ships the iOS artifacts, and the engine, the
+  type stripper, the keyword matcher and the record checks are common code, so they move unchanged. (The system's
+  JavaScriptCore would be the alternative behind the same `CollectorEngine` interface if QuickJS ever had to go.)
+- **TypeScript rule: collectors are erasable TypeScript** (the subset of TypeScript's `erasableSyntaxOnly`). The
+  app removes the types itself, in common code (`TypeStripper`), before the engine runs the script; removed text
+  becomes spaces, so error lines and columns match the TypeScript. `enum`, `namespace`, parameter properties,
+  decorators, `<T>value` casts, JSX, `import` and export lists are refused with their position. Types inside
+  template substitutions (`${...}`) are not removed.
+- **Contract:** the script defines `collect(input)` (may be `async`) with `input = { url, keywords, cursor }` and
+  returns `{ records, cursor }`; a record is `{ title, link, date, rawText, signal?, media? }` (`date` and `rawText`
+  are strings, `""` when the site has none). No cursor in the result keeps the previous one; `null` resets it.
+- **Sandbox:** a fresh runtime per run. The only way out is `fetch(address)`, which resolves relative addresses
+  against the source and reaches only the source's host and its subdomains (a leading `www.` is ignored), through
+  the `FetchTransport` the caller gives (tests use `SavedPages`; no test touches the network). A refused address
+  fails the run even if the script caught the error. `Date.now()`, `new Date()` without arguments and
+  `Math.random()` throw; `WeakRef` and `FinalizationRegistry` are removed. Limits per run (`CollectorLimits`): time,
+  memory, stack, characters of the result, number of records, number of fetches, size of a response.
+- **Output:** checked against the record shape (bad records are refused with the reason and never used), then kept
+  only when a keyword appears word for word in the title or text, ignoring case and accents (`KeywordMatcher`).
+- Saved pages and hand-written test collectors live in `shared/fixtures/collect` (invented content on
+  `example.org`).
+- Android host tests swap `quickjs-kt-android` for `quickjs-kt-jvm` (see `shared/build.gradle.kts`): a desktop JVM
+  cannot load the Android native library. A Robolectric test in `androidApp` that runs a collector needs the same
+  substitution in `androidApp/build.gradle.kts`.
+
 ## Conventions
 - Kotlin, official code style (`kotlin.code.style=official`), 4-space indentation, 120-column lines.
 - Code, identifiers, comments, commit messages and documents are English. Text the reader sees is Brazilian
   Portuguese, plain and didactic, and lives in Android string resources: one file per feature,
   `androidApp/src/main/res/values/strings_<feature>.xml`, with names prefixed by the feature.
 - Every library and plugin version is pinned in `gradle/libs.versions.toml`; build files reference the catalog only.
-  The header of that file lists the constraints the versions were chosen against (JDK 17, compileSdk 35); look up
+  The header of that file lists the constraints the versions were chosen against (JDK 17, compileSdk 37); look up
   versions in official documentation, never from memory.
-- SDK levels: compileSdk 35, targetSdk 35, minSdk 28. JVM target 17 (`jvmToolchain(17)`).
+- SDK levels: compileSdk 37, targetSdk 35, minSdk 28. compileSdk is 37 only because quickjs-kt 1.0.18 (the collector
+  engine) declares minCompileSdk 37 in its AAR metadata; targetSdk stays 35. JVM target 17 (`jvmToolchain(17)`).
 - Build only with the Gradle wrapper from the repository root, one build at a time (the machine is shared).
   `gradle.properties` keeps the daemon at `-Xmx3g` and compiles Kotlin in-process.
 - Tests:

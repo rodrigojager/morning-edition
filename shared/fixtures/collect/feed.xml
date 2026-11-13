@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A saved RSS 2.0 feed written for the collector engine tests. Invented content on the reserved example.org domain. -->
+<rss version="2.0">
+  <channel>
+    <title>Notícias de Exemplo</title>
+    <link>https://news.example.org/</link>
+    <description>Um feed escrito para os testes.</description>
+    <language>pt-BR</language>
+    <item>
+      <title>Falha de segurança em biblioteca de compressão</title>
+      <link>https://news.example.org/2026/11/falha-compressao</link>
+      <pubDate>Thu, 12 Nov 2026 09:30:00 GMT</pubDate>
+      <description><![CDATA[<p>Uma falha permite ler memória fora do limite. A correção já saiu na versão 2.4.</p>]]></description>
+      <enclosure url="https://cdn.example.org/img/compressao.png" type="image/png" length="1200"/>
+    </item>
+    <item>
+      <title>Kotlin 2.4 chega com análise mais rápida</title>
+      <link>https://news.example.org/2026/11/kotlin-2-4</link>
+      <pubDate>Wed, 11 Nov 2026 18:00:00 GMT</pubDate>
+      <description>A nova versão &amp; o compilador K2 reduzem o tempo de &quot;build&quot; em projetos grandes.</description>
+    </item>
+    <item>
+      <title>Receita de pão de fermentação natural</title>
+      <link>https://news.example.org/2026/11/pao</link>
+      <pubDate>Wed, 11 Nov 2026 07:15:00 GMT</pubDate>
+      <description>Farinha, água, sal e paciência: o passo a passo de um pão caseiro.</description>
+    </item>
+    <item>
+      <title>Guia prático de testes em aplicativos Android</title>
+      <link>https://news.example.org/2026/11/testes-android</link>
+      <pubDate>Tue, 10 Nov 2026 14:45:00 GMT</pubDate>
+      <description><![CDATA[Como testar telas sem aparelho. Inclui uma seção sobre <b>seguranca</b> de dados locais.]]></description>
+    </item>
+    <item>
+      <title>Clima: semana de chuva no litoral</title>
+      <link>https://news.example.org/2026/11/chuva</link>
+      <pubDate>Mon, 09 Nov 2026 06:00:00 GMT</pubDate>
+      <description>Previsão de chuva forte até sexta-feira.</description>
+    </item>
+  </channel>
+</rss>

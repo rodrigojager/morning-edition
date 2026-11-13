@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "dobra.app"
-    compileSdk = 35
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "app.primeiradobra"
