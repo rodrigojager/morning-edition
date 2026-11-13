@@ -1,0 +1,206 @@
+{
+  "id": "primeira-dobra",
+  "name": "Primeira Dobra",
+  "about": "Programação e tecnologia para quem lidera um time .NET, com espaço para Python, Rust, agentes de IA, segurança e automação.",
+  "topics": [
+    {
+      "name": "IA e agentes",
+      "weight": 1
+    },
+    {
+      "name": "Open source",
+      "weight": 1
+    },
+    {
+      "name": "Segurança",
+      "weight": 1
+    },
+    {
+      "name": "Qualidade de código",
+      "weight": 1
+    },
+    {
+      "name": "Automação e CI/CD",
+      "weight": 1
+    },
+    {
+      "name": "DevOps e MLOps",
+      "weight": 1
+    },
+    {
+      "name": "C# e .NET",
+      "weight": 1
+    },
+    {
+      "name": "Python",
+      "weight": 1
+    },
+    {
+      "name": "Rust",
+      "weight": 1
+    },
+    {
+      "name": "MCP",
+      "weight": 1
+    },
+    {
+      "name": "Self-hosting",
+      "weight": 1
+    }
+  ],
+  "keywords": [],
+  "language": "pt-BR",
+  "tone": "didatico",
+  "prompt": "",
+  "format": {
+    "accepted": [
+      "illustration",
+      "title",
+      "summary",
+      "section",
+      "paragraph",
+      "callout",
+      "glossary",
+      "list",
+      "image",
+      "video",
+      "code",
+      "facts",
+      "hypothesis",
+      "factsheet",
+      "quote",
+      "evidence",
+      "sources",
+      "note",
+      "why"
+    ]
+  },
+  "looks": {},
+  "cadence": {
+    "kind": "daily",
+    "hour": 7
+  },
+  "sources": [
+    {
+      "id": "github-trending",
+      "name": "GitHub Trending",
+      "url": "https://github.com/trending",
+      "liked": "página de tendências, diária e semanal",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 24,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "hacker-news",
+      "name": "Hacker News",
+      "url": "https://news.ycombinator.com",
+      "liked": "API de busca: capa do dia e histórias da semana acima de 150 pontos",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 130,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "lobsters",
+      "name": "Lobsters",
+      "url": "https://lobste.rs",
+      "liked": "lista “hottest” em JSON",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 25,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "dev",
+      "name": "DEV",
+      "url": "https://dev.to",
+      "liked": "API pública, mais reagidos em 7 dias",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 40,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "reddit-rss",
+      "name": "Reddit (RSS)",
+      "url": "https://www.reddit.com",
+      "liked": "feeds de r/programming, r/selfhosted e r/LocalLLaMA",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 75,
+        "state": "partial"
+      },
+      "health": "working"
+    },
+    {
+      "id": "reddit-via-hackertab",
+      "name": "Reddit via Hackertab",
+      "url": "https://api.hackertab.dev/engine/feeds?source=reddit",
+      "liked": "`api.hackertab.dev/engine/feeds?source=reddit`",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 25,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "product-hunt",
+      "name": "Product Hunt",
+      "url": "https://www.producthunt.com",
+      "liked": "feed Atom",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 50,
+        "state": "partial"
+      },
+      "health": "working"
+    },
+    {
+      "id": "foruns",
+      "name": "Fóruns",
+      "url": "https://discuss.python.org",
+      "liked": "discuss.python.org e users.rust-lang.org, mais lidos da semana em RSS",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 58,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "net-blog",
+      "name": ".NET Blog",
+      "url": "https://devblogs.microsoft.com/dotnet/",
+      "liked": "feed RSS",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 10,
+        "state": "answered"
+      },
+      "health": "working"
+    },
+    {
+      "id": "blog-da-apiiro",
+      "name": "Blog da Apiiro",
+      "url": "https://apiiro.com",
+      "liked": "página do artigo citado no Hacker News",
+      "lastRun": {
+        "at": "2026-11-12",
+        "records": 0,
+        "state": "failed"
+      },
+      "health": "unavailable"
+    }
+  ],
+  "version": 1
+}

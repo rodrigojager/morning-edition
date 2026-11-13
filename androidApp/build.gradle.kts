@@ -23,6 +23,11 @@ android {
         }
     }
 
+    sourceSets {
+        // The demonstration magazine and edition (JSON) live in shared/seed and ship as app assets.
+        getByName("main").assets.srcDir("../shared/seed")
+    }
+
     buildFeatures {
         compose = true
     }

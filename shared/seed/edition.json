@@ -1,0 +1,2232 @@
+{
+  "magazine": "primeira-dobra",
+  "date": "2026-11-12",
+  "number": 1,
+  "recipeVersion": 1,
+  "state": "published",
+  "items": [
+    {
+      "id": "security-audit-skill",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "rings",
+            "hue": 8,
+            "alt": "seis anéis concêntricos, um para cada fase da auditoria"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "Segurança · Agentes",
+          "text": "Uma auditoria de segurança em seis fases que desconfia de si mesma",
+          "short": "Auditoria em seis fases (Cloudflare)",
+          "readMin": 6,
+          "tags": [
+            "seguranca",
+            "ia-agentes",
+            "open-source",
+            "qualidade"
+          ],
+          "discovery": [
+            "GitHub Trending"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "Um roteiro pronto que faz um assistente de IA revisar o seu código atrás de falhas de segurança, em seis etapas. Ele só marca uma falha como confirmada depois que um segundo assistente tentou derrubá-la e não conseguiu, o que reduz alarmes falsos."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "Pedir a um agente “ache os bugs de segurança” costuma devolver uma lista longa de suspeitas. Separar o que é real do que é palpite fica para você, e cada alarme falso custa tempo de alguém."
+        },
+        {
+          "type": "paragraph",
+          "text": "Esta skill ataca justamente esse ponto. Ela divide o trabalho em fases, obriga cada achado a passar por um verificador que não participou da busca e entrega o resultado em um JSON validado por esquema, que outra ferramenta consegue ler."
+        },
+        {
+          "type": "callout",
+          "text": "Pense em uma redação de jornal com repórter e checador. O repórter traz a pauta, mas só vai para a página o que um segundo profissional, que não participou da apuração, tentou derrubar e não conseguiu."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "Skill",
+              "arquivo de instruções que ensina um assistente de IA a fazer uma tarefa específica do jeito combinado."
+            ],
+            [
+              "Agente de código",
+              "assistente de IA que lê, escreve e executa código dentro do seu projeto."
+            ],
+            [
+              "Falso positivo",
+              "alarme de falha que, depois de conferido, não era falha."
+            ],
+            [
+              "Sandbox",
+              "ambiente isolado em que um programa roda sem conseguir mexer no resto da máquina."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "**Reconhecimento.** O agente mapeia o sistema e produz `architecture.md` e um livro de cobertura, `coverage-ledger.json`.",
+            "**Caça guiada por cobertura.** Caçadores isolados procuram falhas; críticos de cobertura apontam o que ficou sem olhar.",
+            "**Validação de candidatos.** Um verificador novo tenta refutar cada candidato.",
+            "**Saída estruturada.** Os achados viram `findings.json`, validado contra `report-schema.json`.",
+            "**Verificação independente dos registros.** Outra passada confere o que foi escrito.",
+            "**Relatório.** Saem `REPORT.md`, `FINDINGS-DETAIL.md` e `NEEDS-VALIDATION.md`. Cada item termina como `confirmed`, `needs_validation` ou `rejected`, e só os confirmados recebem severidade."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A fonte não traz capturas de tela; nenhuma imagem foi inventada para esta matéria."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Instalar no agente com o comando do README (abaixo). Há uma variante com `--global`.",
+            "Pedir em linguagem natural, com frases dadas no próprio README: “security audit this codebase” ou “find security vulnerabilities in ./src”.",
+            "Escolher onde o relatório cai: “do a security review, output to ~/audits/my-project”. Sem isso, o padrão é `~/security-audit-skill/<repo-name>/run-<N>`."
+          ]
+        },
+        {
+          "type": "code",
+          "code": "npx skills add https://github.com/cloudflare/security-audit-skill \\\n  --skill security-audit"
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "Exige um agente de código cujo modelo use ferramentas e subagentes em paralelo. O README não cita produtos pelo nome.",
+            "Precisa de Node.js para os validadores (`validate-findings.cjs`, `validate-coverage-ledger.cjs`), que não têm dependências.",
+            "Pede um sandbox imposto pelo sistema operacional para compilar e testar o alvo. Sem ele, a pista fica como `needs_validation` em vez de executar o código.",
+            "Carregar a skill não dispara a auditoria: o fluxo completo só começa com um pedido explícito de auditoria ou pentest."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Rodar a auditoria completa em um serviço ASP.NET antes de um release e comparar os itens `confirmed` com o que o SonarQube já aponta. Onde os dois concordam, a prioridade é clara; onde só um vê, vale investigar o motivo.",
+            "Guardar o `findings.json` como artefato de um job no GitLab, para acompanhar a evolução entre versões. A skill não menciona GitLab nem SonarQube: isto é uma ideia de encaixe, não algo testado."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "security-audit, de cloudflare/security-audit-skill"
+            ],
+            [
+              "Linguagem e plataforma",
+              "Markdown para o roteiro; validadores em JavaScript (Node.js)"
+            ],
+            [
+              "Onde roda",
+              "Local, dentro do seu agente de código"
+            ],
+            [
+              "Licença",
+              "MIT"
+            ],
+            [
+              "Custo",
+              "Gratuito. O consumo do modelo é seu; o README não informa custo em tokens"
+            ],
+            [
+              "Maturidade",
+              "Criado em 18 jun 2026; último push em 14 set 2026; 126 issues abertas"
+            ]
+          ],
+          "difficulty": 2,
+          "difficultyNote": "**Média.** Instalar é um comando; montar o sandbox e ler os relatórios com critério dá trabalho."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Uma rodada não é cobertura completa. O README diz que, nos testes deles, uma única execução encontrou cerca de metade das vulnerabilidades que execuções repetidas encontraram no total.",
+            "Uma rodada rápida ou de escopo reduzido deve se apresentar como cobertura parcial, segundo o `SKILL.md`.",
+            "Não sonda endpoints publicados, serviços externos nem produção, e não altera o código do alvo.",
+            "Não há taxa de falso positivo publicada, nem conjunto de dados que permita reproduzir os testes citados.",
+            "O repositório não recebe commits desde setembro. O pico de atenção é desta semana; o código, não."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "Adversarial validation. The agent that checks a finding is never the agent that found it.",
+          "pt": "Validação adversarial: o agente que confere um achado nunca é o que o encontrou.",
+          "who": "README do projeto",
+          "url": "https://github.com/cloudflare/security-audit-skill#readme"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "12 nov 2026",
+              "No [Trending semanal](https://github.com/trending?since=weekly): +11.507 estrelas em sete dias, 71.030 no total. Estrelas totais não são tendência; o ganho da semana é o sinal."
+            ],
+            [
+              "12 nov 2026",
+              "A [API do GitHub](https://api.github.com/repos/cloudflare/security-audit-skill) informa licença MIT, criação em 18 jun 2026 e último push em 14 set 2026."
+            ],
+            [
+              "sem data no README",
+              "O README afirma que a skill “seeded Cloudflare's vulnerability discovery harness” e aponta para o post “Build your own vulnerability harness”, que não foi lido para esta edição."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · GitHub Trending",
+              "label": "Trending semanal do GitHub",
+              "url": "https://github.com/trending?since=weekly",
+              "note": "12 nov 2026 · +11.507 estrelas na semana"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "cloudflare/security-audit-skill",
+              "url": "https://github.com/cloudflare/security-audit-skill",
+              "note": "repositório e site oficial do projeto"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "SKILL.md (roteiro completo da skill)",
+              "url": "https://github.com/cloudflare/security-audit-skill/blob/HEAD/skills/security-audit/SKILL.md"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lidos diretamente: README e `skills/security-audit/SKILL.md`. Comandos, nomes de arquivo e citações foram comparados com o texto bruto. Não lidos: os demais arquivos de apoio e o post da Cloudflare."
+        },
+        {
+          "type": "why",
+          "text": "Junta três dos seus interesses de uma vez: segurança, agentes e qualidade de código. Pesou mais ainda o fato de o README e o `SKILL.md` terem sido lidos por inteiro, com comandos conferidos letra a letra."
+        }
+      ]
+    },
+    {
+      "id": "aws-emulator",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "mirror",
+            "hue": 28,
+            "alt": "dois cubos espelhados, a nuvem e a cópia local"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "Rust · Desenvolvimento local",
+          "text": "A AWS publicou um emulador local de si mesma",
+          "short": "AWS Emulator",
+          "readMin": 6,
+          "tags": [
+            "rust",
+            "open-source",
+            "devops",
+            "automacao"
+          ],
+          "discovery": [
+            "Hacker News",
+            "Reddit via Hackertab"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "Um programa que imita, dentro do seu computador, os serviços de nuvem da AWS. Serve para testar um sistema que depende da nuvem sem criar nada de verdade e sem pagar por isso."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "Testar integração com a nuvem costuma exigir conta, credenciais, rede e paciência, e cada execução pode gerar custo. Por isso muitos times testam pouco essa parte, ou só em um ambiente compartilhado que vive quebrado."
+        },
+        {
+          "type": "paragraph",
+          "text": "Um emulador local responde às mesmas chamadas que o seu código faria à AWS. O teste roda no notebook e no pipeline, rápido e sem fatura."
+        },
+        {
+          "type": "callout",
+          "text": "É um simulador de voo. Os comandos respondem como no avião e você pode errar à vontade, mas ninguém tira o brevê só no simulador, e o fabricante avisa quais instrumentos ainda não se comportam igual."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "AWS",
+              "o serviço de nuvem da Amazon: computadores, bancos de dados e armazenamento alugados pela internet."
+            ],
+            [
+              "Emulador",
+              "programa que imita outro sistema e responde como ele responderia."
+            ],
+            [
+              "CI",
+              "a automação que compila e testa o código a cada mudança."
+            ],
+            [
+              "Fidelidade",
+              "o quanto a imitação se comporta como o original."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "O projeto tem um binário roteador e um crate por serviço da AWS, além de crates centrais.",
+            "**Modo servidor.** No Linux, instala-se um pacote; em Windows e macOS, roda em um container Docker. O SDK ou a CLI são apontados para o emulador por variáveis de ambiente.",
+            "**Modo embutido.** Em projetos Rust, entra como `dev-dependency` e roda dentro do próprio processo de teste, sem endpoint.",
+            "Cada release publica notas de fidelidade por serviço, e as lacunas conhecidas ficam registradas no diretório `issues/` do repositório."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A fonte não traz capturas de tela; nenhuma imagem foi inventada para esta matéria."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Instalar a skill para agentes indicada no README (precisa de AWS CLI 2.35.0 ou mais nova): `aws agent-toolkit add-skill --skill-name aws-emulator --region us-east-1`.",
+            "Compilar do código-fonte, só em Linux x86_64 ou aarch64, com os comandos abaixo.",
+            "Desligar a telemetria, que vem ligada: `aws-emulator --telemetry off` ou `export EMULATOR_TELEMETRY=off`."
+          ]
+        },
+        {
+          "type": "code",
+          "code": "cargo build -p aws-emulator-router\ncargo run   -p aws-emulator-router"
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "O README define o uso: “AWS Emulator is for building and testing.”",
+            "Compilar do fonte pede toolchain Rust, compilador C e pelo menos 100 GB de disco; o README recomenda guardar `target/` em cache no CI.",
+            "Bugs e lacunas de fidelidade são reportados em [GitHub Issues](https://github.com/aws/aws-emulator/issues).",
+            "O README não lista quais serviços são emulados nem os nomes das variáveis de ambiente; remete a outras páginas, que não foram lidas."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Em um serviço .NET que usa filas ou armazenamento da AWS, trocar a conta de homologação por um container do emulador no job de testes de integração do GitLab. Antes, conferir a nota de fidelidade do serviço exato que você usa.",
+            "Se os seus testes precisam zerar o estado a cada caso, leia primeiro a ressalva do Hacker News logo abaixo. Nada disto foi testado para esta edição."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "AWS Emulator, de aws/aws-emulator"
+            ],
+            [
+              "Linguagem e plataforma",
+              "Rust; servidor em Linux ou via Docker em Windows e macOS"
+            ],
+            [
+              "Onde roda",
+              "Local e em CI; embutido em testes Rust"
+            ],
+            [
+              "Licença",
+              "CC0-1.0; a pasta `vendor/` é Apache-2.0"
+            ],
+            [
+              "Custo",
+              "Sem taxa adicional, segundo o README"
+            ],
+            [
+              "Maturidade",
+              "Repositório criado em 11 set 2026; estágio (preview ou estável) não informado"
+            ]
+          ],
+          "difficulty": 2,
+          "difficultyNote": "**Média.** Subir o container tende a ser simples; confiar nos resultados exige conferir a fidelidade de cada serviço."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Aviso do README: “Don't use it for production workloads or to test security.”",
+            "A telemetria vem ligada por padrão. O README diz que ela exclui conteúdo de requisições e respostas, código, credenciais e dados pessoais.",
+            "No Hacker News, jbmchuck observou que não há um jeito rápido de zerar o estado além de reiniciar o processo, então provavelmente não substitui o moto em suítes que isolam cada teste.",
+            "No mesmo tópico, CharlieDigital questionou se é um produto cuidado por um time ou o resultado de um exercício. O usuário ke4qqq respondeu defendendo que é um produto real e que será mantido.",
+            "Outros comentaristas citaram notas de fidelidade baixas para alguns serviços. Esses números não foram conferidos e ficaram fora do texto."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "Don't use it for production workloads or to test security.",
+          "pt": "Não use para cargas de produção nem para testar segurança.",
+          "who": "README do projeto",
+          "url": "https://github.com/aws/aws-emulator#readme"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "11 nov 2026",
+              "[Tópico no Hacker News](https://news.ycombinator.com/item?id=50456631) com 951 pontos e 261 comentários no momento da coleta."
+            ],
+            [
+              "12 nov 2026",
+              "A [API do GitHub](https://api.github.com/repos/aws/aws-emulator) informa 4.864 estrelas, linguagem Rust, licença CC0-1.0 e push no mesmo dia."
+            ],
+            [
+              "12 nov 2026",
+              "Um [relato no r/aws](https://www.reddit.com/r/aws/comments/1xua13r/i_tested_aws_emulator_against_18_services_last/) apareceu na listagem do Reddit obtida pelo Hackertab. Só o título foi lido."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · Hacker News",
+              "label": "“AWS emulator” no Hacker News",
+              "url": "https://news.ycombinator.com/item?id=50456631",
+              "note": "11 nov 2026 · 951 pontos, 261 comentários na coleta"
+            },
+            {
+              "role": "Onde foi descoberta · Reddit via Hackertab",
+              "label": "r/aws: “I tested AWS Emulator against 18 services last night”",
+              "url": "https://www.reddit.com/r/aws/comments/1xua13r/i_tested_aws_emulator_against_18_services_last/",
+              "note": "12 nov 2026 · só o título foi lido"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "aws/aws-emulator",
+              "url": "https://github.com/aws/aws-emulator",
+              "note": "repositório oficial"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lido diretamente: README, com comandos e avisos comparados ao texto bruto. Os comentários de jbmchuck, CharlieDigital e ke4qqq foram conferidos na API do Hacker News. Não lidos: página de releases com as notas de fidelidade, guia do usuário e o post no Reddit."
+        },
+        {
+          "type": "why",
+          "text": "Rust, open source e automação de testes no mesmo item, vindo da própria AWS. A edição o mantém alto, mas registra o ceticismo da comunidade em vez de escondê-lo."
+        }
+      ]
+    },
+    {
+      "id": "modern-web-guidance",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "blocks",
+            "hue": 212,
+            "alt": "uma janela de navegador com um diálogo nativo no centro"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "Agentes · Front-end",
+          "text": "Um guia para tirar o seu agente do JavaScript de 2019",
+          "short": "Modern Web Guidance",
+          "readMin": 6,
+          "tags": [
+            "ia-agentes",
+            "open-source",
+            "qualidade"
+          ],
+          "discovery": [
+            "Hacker News",
+            "GitHub Trending"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "Uma coleção de guias curtos que o assistente de IA consulta antes de escrever a tela de um site. Serve para ele usar os recursos que o navegador já traz prontos, em vez de escrever código extra do jeito antigo."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "Navegadores resolvem hoje, de fábrica, coisas que pediam dezenas de linhas de JavaScript ou uma dependência. O autor dá três exemplos: `CSS.highlights` para destacar trechos de texto, `<dialog>` com `showModal()` para janelas modais e `field-sizing` para áreas de texto que crescem sozinhas."
+        },
+        {
+          "type": "paragraph",
+          "text": "Segundo ele, os modelos até conhecem esses recursos pelo nome, mas não os escolhem por padrão e voltam ao velho `<div>` com JavaScript. O resultado é código maior, mais lento e mais difícil de manter."
+        },
+        {
+          "type": "callout",
+          "text": "É como entregar ao pedreiro o catálogo atualizado da loja. Ele sabe levantar a parede, mas sem o catálogo continua improvisando à mão peças que hoje já vêm prontas."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "Recurso nativo",
+              "algo que o navegador já faz sozinho, sem código adicional."
+            ],
+            [
+              "Baseline",
+              "projeto que indica quais recursos já funcionam em todos os navegadores principais."
+            ],
+            [
+              "Skill",
+              "arquivo de instruções que ensina um assistente de IA a fazer uma tarefa específica."
+            ],
+            [
+              "Linter",
+              "ferramenta que aponta problemas no código seguindo regras fixas, sem IA."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "A skill é ativada quando a tarefa envolve front-end.",
+            "O agente roda `search \"<consulta>\"` na CLI. A busca combina embeddings e BM25, funciona offline e não pede chave de API.",
+            "Com o identificador do guia em mãos, `retrieve <guia>` carrega só aquele guia no contexto.",
+            "O acervo descrito no README tem 250 recursos (140 de CSS e layout, 36 de HTML e DOM, 74 de JavaScript e APIs) e 203 casos de uso.",
+            "Um comando à parte, `legacy-scan`, varre o código em busca de padrões antigos, sem usar modelo."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A fonte não traz capturas de tela; nenhuma imagem foi inventada para esta matéria."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Instalar com o assistente interativo: `npx modern-web-guidance@latest install`. Também há `npx skills add GoogleChrome/modern-web-guidance`.",
+            "Buscar um caso: `npx modern-web-guidance@latest search \"animate a dialog modal backdrop\"`.",
+            "Listar padrões antigos do projeto: `npx modern-web-guidance@latest legacy-scan .`"
+          ]
+        },
+        {
+          "type": "code",
+          "code": "npx modern-web-guidance@latest install\nnpx modern-web-guidance@latest legacy-scan ."
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "As instruções de instalação citam Claude Code, OpenAI Codex e GitHub Copilot CLI, entre outros agentes.",
+            "Usa dados de compatibilidade do projeto Baseline. Recursos em Origin Trial ou voláteis continuam buscáveis, mas só são entregues se você liberar em um arquivo `.mwgrc` (`allowOriginTrials`, `allowVolatileFeatures`).",
+            "Os exemplos do autor no Hacker News prefixam os comandos com `DISABLE_TELEMETRY=1`, o que indica que há telemetria a desligar.",
+            "O README se descreve como mantido pelos times do Chrome, Edge, Firefox e MDN, junto com a comunidade."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Rodar `legacy-scan` na pasta de front-end de uma aplicação ASP.NET (por exemplo, `wwwroot` ou as views Razor) para obter uma lista de padrões antigos sem gastar um token. É um bom primeiro contato, de baixo risco.",
+            "Ativar a skill apenas nos projetos em que agentes mexem em interface, e observar o consumo nas primeiras tarefas por causa do relato de custo abaixo. Não testado para esta edição."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "Modern Web Guidance, de GoogleChrome/modern-web-guidance"
+            ],
+            [
+              "Linguagem e plataforma",
+              "JavaScript e TypeScript; CLI via `npx`"
+            ],
+            [
+              "Onde roda",
+              "Local; a busca funciona offline"
+            ],
+            [
+              "Licença",
+              "Apache-2.0 para o código; CC-BY 4.0 para os guias"
+            ],
+            [
+              "Custo",
+              "Gratuito. O consumo de tokens é seu: um usuário relatou cerca de US$ 5 por uso no projeto dele"
+            ],
+            [
+              "Maturidade",
+              "Repositório criado em 23 mar 2026; versão 1.0 anunciada em 10 nov 2026"
+            ]
+          ],
+          "difficulty": 1,
+          "difficultyNote": "**Baixa.** Um comando instala; o `legacy-scan` funciona sem configurar nada."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Os números de eficácia são do autor e não foram reproduzidos: 200 tarefas com cerca de 1.700 verificações, em que os agentes teriam passado de 55% para 92% de acerto com a skill; e 92% de precisão média do `legacy-scan` em repositórios de teste.",
+            "No Hacker News, lelandfe disse que esperava o padrão “Widely Available only”, com adesão opcional para o resto.",
+            "Philip Walton, do projeto, respondeu que o objetivo “is NOT to push Chrome-only APIs on users”.",
+            "O usuário dflock relatou cerca de US$ 5 por uso no codebase dele, com a ressalva de que a medição do próprio cliente é pouco confiável.",
+            "Outros comentários, lidos apenas por resumo, questionam se uma descrição em prosa substitui um linter determinístico."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "Models know about some of these by name, but consistently won't default to using the platform-native solution.",
+          "pt": "Os modelos conhecem alguns desses recursos pelo nome, mas não escolhem a solução nativa por padrão.",
+          "who": "Paul Irish, no Show HN",
+          "url": "https://news.ycombinator.com/item?id=50443812"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "10 nov 2026",
+              "[Show HN](https://news.ycombinator.com/item?id=50443812) anunciando a versão 1.0, em colaboração com Firefox, MDN e Edge: 434 pontos e 145 comentários na coleta."
+            ],
+            [
+              "12 nov 2026",
+              "A [API do GitHub](https://api.github.com/repos/GoogleChrome/modern-web-guidance) informa 6.860 estrelas e licença Apache-2.0. O repositório de origem, `modern-web-guidance-src`, ganhou 799 estrelas no dia."
+            ],
+            [
+              "11 nov 2026",
+              "Comentários de [lelandfe](https://news.ycombinator.com/item?id=50448247) e [dflock](https://news.ycombinator.com/item?id=50450822) com as ressalvas citadas."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · Hacker News",
+              "label": "Show HN de Paul Irish",
+              "url": "https://news.ycombinator.com/item?id=50443812",
+              "note": "10 nov 2026 · 434 pontos, 145 comentários na coleta"
+            },
+            {
+              "role": "Onde foi descoberta · GitHub Trending",
+              "label": "Trending diário (repositório de origem)",
+              "url": "https://github.com/trending?since=daily",
+              "note": "12 nov 2026 · +799 estrelas no dia"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "GoogleChrome/modern-web-guidance",
+              "url": "https://github.com/GoogleChrome/modern-web-guidance",
+              "note": "repositório publicado"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Página oficial",
+              "url": "https://goo.gle/modern-web-guidance",
+              "note": "endereço informado no repositório"
+            },
+            {
+              "role": "Citado pelo autor · não lido",
+              "label": "Guias em versão legível",
+              "url": "https://developer.chrome.com/docs/modern-web-guidance/guides"
+            },
+            {
+              "role": "Citado pelo autor · não lido",
+              "label": "Post sobre a versão 1.0",
+              "url": "https://developer.chrome.com/blog/modern-web-guidance-v1"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lidos diretamente: README (comandos, contagens e licenças comparados ao texto bruto), o texto do Show HN e os comentários citados pelo nome, via API do Hacker News. Lidos só por resumo automático: os demais comentários. Não lidos: os guias em si e o post da versão 1.0."
+        },
+        {
+          "type": "why",
+          "text": "É uma melhoria concreta de fluxo: muda o que o agente escreve sem você revisar linha a linha. Subiu pela qualidade da evidência, com números do autor claramente separados do que foi conferido."
+        }
+      ]
+    },
+    {
+      "id": "lock-actions",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "chain",
+            "hue": 150,
+            "alt": "elos de uma corrente, um deles marcado como travado"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "CI/CD · Cadeia de suprimentos",
+          "text": "O GitHub Actions ganhou lockfile, e fixar SHA à mão ficou para trás",
+          "short": "Lockfile do GitHub Actions",
+          "readMin": 5,
+          "tags": [
+            "seguranca",
+            "automacao",
+            "devops"
+          ],
+          "discovery": [
+            "Lobsters",
+            "Hacker News"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "Um arquivo de trava (lockfile) que anota a versão exata de cada peça de terceiros usada na automação do GitHub. Serve para impedir que alguém troque o conteúdo de uma dessas peças sem você perceber. Antes, a proteção era copiar à mão o código de identificação de cada versão, o SHA."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "As actions do GitHub são baixadas de repositórios Git. Quando o workflow pede `actions/checkout@v7`, ele confia na etiqueta `v7`, e etiquetas podem ser movidas. Quem compromete o repositório de uma action consegue apontar uma etiqueta antes segura para código malicioso."
+        },
+        {
+          "type": "paragraph",
+          "text": "A recomendação anterior era fixar cada action pelo SHA completo do commit. Funciona, mas deixa os workflows ilegíveis e trabalhosos de atualizar. O post parte da novidade: o GitHub Actions agora aceita lockfiles de workflow."
+        },
+        {
+          "type": "callout",
+          "text": "É a diferença entre pedir “o prato do dia” e pedir pela ficha técnica assinada. O nome no cardápio pode continuar o mesmo enquanto a receita muda; a ficha diz exatamente o que você aceitou receber."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "GitHub Actions",
+              "a automação do GitHub: tarefas que rodam sozinhas quando o código muda, como testar e publicar."
+            ],
+            [
+              "Action",
+              "uma peça pronta, feita por terceiros, que essa automação baixa e executa."
+            ],
+            [
+              "Etiqueta (tag)",
+              "apelido legível de uma versão, como `v7`. Pode ser movido para apontar para outro código."
+            ],
+            [
+              "SHA",
+              "código de identificação único de uma versão exata. Se o conteúdo muda, o SHA muda."
+            ],
+            [
+              "Lockfile",
+              "arquivo que lista o SHA aceito de cada dependência. O que não bater é recusado."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Instala-se uma extensão do GitHub CLI: `gh extension install github/gh-actions-lock`.",
+            "Os workflows voltam a usar etiquetas legíveis, como `actions/checkout@v7.0.1`.",
+            "O comando `gh actions-lock` gera `.github/workflows/actions.lock`, que guarda `ref`, `commit`, `owner_id` e `repo_id` de cada dependência.",
+            "Workflows alterados e lockfile vão juntos no commit.",
+            "Um job de CI roda `gh actions-lock --verify` e falha se a trava estiver fora de sincronia."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A única imagem do post é decorativa (um anúncio antigo de cadeados de bicicleta) e não ajuda a entender o assunto; por isso não foi reproduzida."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Gerar a trava pela primeira vez; a saída mostrada no post é “All 1 workflows valid”.",
+            "Verificar no CI com a extensão fixada em uma versão: `gh extension install github/gh-actions-lock --pin v0.4.1`, seguido de `gh actions-lock --verify`.",
+            "Passar o zizmor, um linter de segurança para Actions, como hook de pre-commit. O post indica a `v1.32.0` como a primeira com suporte a lockfile."
+          ]
+        },
+        {
+          "type": "code",
+          "code": "gh extension install github/gh-actions-lock\ngh actions-lock            # gera .github/workflows/actions.lock\ngh actions-lock --verify   # no CI: falha se algo divergir"
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "Renovate e Dependabot já entendem o lockfile, segundo o post, então as atualizações periódicas também atualizam a trava. O autor recomenda configurar um período de espera (cooldown).",
+            "Depois de mudar uma action ou criar um workflow, é preciso rodar `gh actions-lock` de novo; o CI avisa quando falta."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "O seu CI é GitLab, então os comandos não se aplicam diretamente. O que se transporta é a ideia: tratar `include:` remotos e imagens de job como dependências travadas por SHA de commit ou digest de imagem, com um job que falha quando a trava e o uso divergem.",
+            "Em repositórios seus que estejam no GitHub, o fluxo do post se aplica como está. A leitura para GitLab é minha; o post não fala de GitLab."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "Lockfiles de workflow, com a extensão github/gh-actions-lock"
+            ],
+            [
+              "Linguagem e plataforma",
+              "GitHub Actions e GitHub CLI"
+            ],
+            [
+              "Onde roda",
+              "Na sua máquina (CLI) e no CI"
+            ],
+            [
+              "Licença",
+              "Não verificada nesta edição"
+            ],
+            [
+              "Custo",
+              "O post não menciona custo"
+            ],
+            [
+              "Maturidade",
+              "Recente: o post usa a extensão na versão 0.4.1"
+            ]
+          ],
+          "difficulty": 1,
+          "difficultyNote": "**Baixa.** Três comandos e um job de verificação."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "O autor admite que a própria extensão, fixada em `v0.4.1` no CI, terá de ser atualizada um dia, e deixa isso “para outra hora”.",
+            "No Lobsters, um comentarista identificado como mantenedor do zizmor (woodruffw) apontou que a trava cobre chamadas comuns de actions: workflows reutilizáveis seguem fixados à mão, e imagens Docker ou downloads feitos em tempo de execução ficam de fora.",
+            "No Hacker News, perguntou-se se a trava impede uma action de executar código malicioso; a resposta foi que a action roda o que o ponto de entrada dela fizer. A trava garante qual código entra, não o que ele faz.",
+            "Os comentários das duas comunidades foram lidos por resumo automático. As formulações acima são paráfrases, não citações."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "zizmor is a security linter for GitHub Actions and strongly recommended.",
+          "pt": "O zizmor é um linter de segurança para GitHub Actions e é fortemente recomendado.",
+          "who": "Hugo van Kemenade",
+          "url": "https://hugovk.dev/blog/2026/lock-github-actions/"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "11 nov 2026",
+              "[Post publicado](https://hugovk.dev/blog/2026/lock-github-actions/) por Hugo van Kemenade."
+            ],
+            [
+              "11 nov 2026",
+              "[Lobsters](https://lobste.rs/s/v3uidx): 26 pontos e 7 comentários na coleta, com etiqueta devops."
+            ],
+            [
+              "11 nov 2026",
+              "[Hacker News](https://news.ycombinator.com/item?id=50459485): 321 pontos e 62 comentários na coleta."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · Lobsters",
+              "label": "Discussão no Lobsters",
+              "url": "https://lobste.rs/s/v3uidx",
+              "note": "11 nov 2026 · 26 pontos, 7 comentários na coleta"
+            },
+            {
+              "role": "Onde foi descoberta · Hacker News",
+              "label": "Discussão no Hacker News",
+              "url": "https://news.ycombinator.com/item?id=50459485",
+              "note": "11 nov 2026 · 321 pontos, 62 comentários na coleta"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Lock your GitHub Actions, por Hugo van Kemenade",
+              "url": "https://hugovk.dev/blog/2026/lock-github-actions/",
+              "note": "post original"
+            },
+            {
+              "role": "Citado no post · não lido",
+              "label": "zizmor-pre-commit",
+              "url": "https://github.com/zizmorcore/zizmor-pre-commit"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lido diretamente: o post, com comandos e versões comparados ao HTML bruto. Lidos só por resumo automático: os comentários do Lobsters e do Hacker News. Não lidos: o repositório da extensão e o do zizmor."
+        },
+        {
+          "type": "why",
+          "text": "Segurança aplicada a pipeline, com passo a passo que cabe em uma tarde. Apareceu em duas comunidades diferentes, e a mais crítica delas (Lobsters) trouxe as melhores ressalvas."
+        }
+      ]
+    },
+    {
+      "id": "mcp-simple",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "hub",
+            "hue": 262,
+            "alt": "um centro ligado a várias pontas, duas delas abertas"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "MCP · Ensaio",
+          "text": "MCP é simples demais, e é aí que mora o risco",
+          "short": "MCP é simples demais",
+          "readMin": 5,
+          "tags": [
+            "mcp",
+            "ia-agentes",
+            "seguranca"
+          ],
+          "discovery": [
+            "DEV"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "MCP é um padrão que deixa assistentes de IA usarem ferramentas de outros sistemas, como abrir um chamado ou consultar um banco de dados. O artigo mostra que conectar tudo ficou fácil, e que o padrão não decide sozinho o que o assistente tem permissão de fazer."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "MCP é um protocolo que padroniza como um cliente de IA descobre ferramentas, lê o formato de entrada de cada uma e as chama. Com ele, cada aplicativo não precisa inventar a própria integração."
+        },
+        {
+          "type": "paragraph",
+          "text": "A facilidade esconde o que o protocolo não resolve sozinho: quem pode chamar o quê, quando um humano precisa aprovar, o que acontece se a mesma ação for registrada duas vezes e até que ponto dá para confiar na descrição de uma ferramenta."
+        },
+        {
+          "type": "callout",
+          "text": "MCP é a tomada padronizada: qualquer aparelho encaixa. A tomada não decide se aquele aparelho deveria estar ligado na sua casa, nem desliga sozinha quando ele esquenta."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "MCP",
+              "Model Context Protocol: um padrão para conectar assistentes de IA a ferramentas."
+            ],
+            [
+              "Servidor MCP",
+              "o programa que oferece as ferramentas."
+            ],
+            [
+              "Cliente",
+              "o assistente ou editor que usa essas ferramentas."
+            ],
+            [
+              "Injeção de prompt",
+              "texto malicioso que tenta dar ordens ao assistente disfarçado de conteúdo comum."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "A autora estima cerca de 150 linhas para um servidor básico e cerca de 100 para um cliente.",
+            "O servidor de exemplo é um “RH” com SQLite e quatro ferramentas: `get_employee_record`, `file_complaint`, `nominate_for_promotion` e `get_hr_stats`.",
+            "Um agente de revisão de código, o “Steve”, é conectado a esse servidor.",
+            "Ao revisar um código propositalmente ruim, Steve registra uma queixa “severe” contra a autora. Na execução seguinte, registra outra, “legendary”, pela mesma falta.",
+            "Ninguém aprovou nada: a ferramenta grava direto no banco."
+          ]
+        },
+        {
+          "type": "image",
+          "src": "https://dev-to-uploads.s3.us-east-2.amazonaws.com/uploads/articles/rx1v7s45cfenclhs7k3p.png",
+          "alt": "Painel “MCP Servers” de um editor mostrando o servidor hr-department conectado, com 4 ferramentas listadas: get_employee_record, file_complaint, nominate_for_promotion e get_hr_stats.",
+          "caption": "O mesmo servidor de RH conectado ao Kiro, um segundo cliente, sem mudar uma linha.",
+          "credit": "captura do artigo de Sylwia Laskowska no DEV",
+          "href": "https://dev.to/sylwia-lask/mcp-is-dead-simple-and-thats-exactly-the-problem-5811"
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Mesma ação, duas vezes.** Sem detecção de duplicidade nem regra estável de gravidade, a mesma falta gera dois registros diferentes.",
+            "**Um servidor, vários clientes.** O servidor também foi ligado ao Kiro; a autora resume como “One server, multiple AI clients”.",
+            "**Descrição não é garantia.** O nome e a descrição de uma ferramenta ajudam o agente a encontrá-la, mas não provam o que a implementação faz."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "Use MCP quando vários clientes de IA precisam compartilhar a mesma capacidade. Para um único agente interno com ferramentas fixas, uma integração direta basta.",
+            "Ponha no servidor a checagem de permissão, a validação de entrada, os limites e a trilha de auditoria.",
+            "Exija aprovação humana explícita antes de qualquer ferramenta com consequência real.",
+            "Trate respostas de ferramentas como conteúdo não confiável: a autora cita injeção de prompt por meio delas."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Antes de expor uma ferramenta corporativa por MCP, por exemplo abrir chamado ou executar consulta no SQL Server, responder por escrito a quatro perguntas: quem pode chamar, o que exige aprovação, como evitar o registro duplicado e onde fica o log.",
+            "O anúncio do .NET 11 cita o template `dotnet new mcpserver` (veja as notas rápidas). Ele pode ser o ponto de partida técnico; as quatro perguntas continuam valendo. Esta combinação é sugestão minha, não está no artigo."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "Artigo no DEV, por Sylwia Laskowska"
+            ],
+            [
+              "Linguagem do exemplo",
+              "TypeScript"
+            ],
+            [
+              "Onde roda",
+              "É leitura; o exemplo roda localmente"
+            ],
+            [
+              "Licença e custo",
+              "Leitura gratuita"
+            ],
+            [
+              "Natureza",
+              "Opinião apoiada em uma demonstração"
+            ],
+            [
+              "Maturidade",
+              "A autora diz que a especificação do MCP está mudando rápido"
+            ]
+          ],
+          "difficulty": 1,
+          "difficultyNote": "**Baixa** para ler. Aplicar as recomendações em um servidor real é outro trabalho."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "É um relato de caso com tom de humor, não uma medição. Os únicos números são contagens de linhas de código.",
+            "A própria autora avisa que, em um sistema de RH real, teria mais cuidado antes de deixar um agente escrever direto no banco.",
+            "Ela também evita exagerar: não trata “ter servidor MCP” como critério universal para escolher fornecedor.",
+            "Dos 40 comentários, parte foi lida; neles não apareceu contestação direta à tese."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "Tool names and descriptions are helpful for discovery; they're not proof that the implementation is trustworthy.",
+          "pt": "Nomes e descrições de ferramentas ajudam na descoberta; não provam que a implementação é confiável.",
+          "who": "Sylwia Laskowska, no DEV",
+          "url": "https://dev.to/sylwia-lask/mcp-is-dead-simple-and-thats-exactly-the-problem-5811"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "12 nov 2026",
+              "[Artigo publicado](https://dev.to/sylwia-lask/mcp-is-dead-simple-and-thats-exactly-the-problem-5811) no DEV, com as etiquetas mcp, ai, agents e typescript."
+            ],
+            [
+              "12 nov 2026",
+              "Na lista de mais reagidos da semana da API do DEV: 73 reações e 40 comentários no momento da coleta."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · DEV",
+              "label": "Mais reagidos da semana no DEV",
+              "url": "https://dev.to/top/week",
+              "note": "12 nov 2026 · 73 reações, 40 comentários na coleta"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "MCP Is Dead Simple. And That's Exactly the Problem",
+              "url": "https://dev.to/sylwia-lask/mcp-is-dead-simple-and-thats-exactly-the-problem-5811",
+              "note": "artigo original, 13 min, em inglês"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lido diretamente: o corpo do artigo, pela API do DEV; as citações foram comparadas com o texto bruto e a captura foi aberta e descrita a partir da própria imagem. Não lido: o repositório de exemplo da autora."
+        },
+        {
+          "type": "why",
+          "text": "Poucas reações no DEV, mas acerta em cheio o seu interesse em agentes e ferramentas corporativas. É o exemplo da regra da casa: popularidade é só um dos sinais."
+        }
+      ]
+    },
+    {
+      "id": "nuget-skills",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "parcel",
+            "hue": 276,
+            "alt": "uma caixa com uma folha de instruções dentro"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": ".NET · Agentes",
+          "text": "Pacotes NuGet agora podem trazer o próprio manual para agentes",
+          "short": "Skills dentro de pacotes NuGet",
+          "readMin": 5,
+          "tags": [
+            "dotnet",
+            "ia-agentes",
+            "automacao"
+          ],
+          "discovery": [
+            "RSS"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "Bibliotecas .NET agora podem trazer, dentro do próprio pacote, um arquivo de instruções para assistentes de IA. Serve para o assistente usar a versão que você instalou do jeito certo, em vez de adivinhar."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "Versões novas de pacotes saem depois do treinamento dos modelos. Quando o agente não conhece a API atual, ele tenta deduzir o uso pelos metadados ou pelo README, o que gasta tokens e nem sempre dá certo."
+        },
+        {
+          "type": "paragraph",
+          "text": "A proposta é o mantenedor escrever a orientação uma vez e despachá-la junto com o pacote. Como ela viaja com a versão, não fica defasada em relação ao código que você de fato tem."
+        },
+        {
+          "type": "callout",
+          "text": "É o manual dentro da caixa. Em vez de o montador adivinhar pelo formato das peças, o fabricante manda a instrução junto, e ela sempre corresponde ao modelo que você comprou."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "NuGet",
+              "o repositório de bibliotecas do .NET, de onde os projetos baixam dependências."
+            ],
+            [
+              "Pacote",
+              "uma biblioteca empacotada, com número de versão."
+            ],
+            [
+              "`dotnet restore`",
+              "o comando que baixa as bibliotecas de que o projeto precisa."
+            ],
+            [
+              "`SKILL.md`",
+              "o arquivo de texto com as instruções para o assistente."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Uma skill é um arquivo Markdown com cabeçalho YAML chamado `SKILL.md`. O cabeçalho de exemplo traz `name` e `description`.",
+            "Dentro do pacote, o arquivo fica em `skills/<nome-da-skill>/SKILL.md`.",
+            "O `dotnet restore` traz as skills junto com a biblioteca. No cache, aparece em caminhos como `~/.nuget/packages/markout/0.40.0/skills/markout/SKILL.md`.",
+            "O arquivo `project.assets.json` passa a listar esses caminhos.",
+            "Duas ferramentas de linha de comando aparecem no post: `dotnet-inspect`, para ver as skills, e `dotnet-package-skills install`, que as copia para `.agents/skills` no repositório."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A fonte não traz capturas de tela; nenhuma imagem foi inventada para esta matéria."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**markout**, um pacote que traz cinco skills, entre elas `markout-output-formats`.",
+            "**Mockly 1.13.0**, com `skills/mockly/SKILL.md` para testes que simulam HTTP.",
+            "Uma skill de exemplo, `vulnerable-nuget-package-check`, que instrui o agente a rodar `dotnet package list --vulnerable --include-transitive`."
+          ]
+        },
+        {
+          "type": "code",
+          "code": "dotnet-inspect package markout -S Skills\ndotnet-inspect project scratch.csproj -S Skills\ndotnet-package-skills install"
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "O post afirma que skills entregues por pacote “are not a special kind of skill”: usam o mesmo formato das demais.",
+            "O servidor MCP do NuGet ainda não foi atualizado para skills, segundo o texto.",
+            "A orientação para mantenedores está “em andamento”. O post não mostra qual propriedade de projeto empacota as skills, nem quais agentes as carregam sozinhos.",
+            "O post recomenda testar skills com modelos de ponta e chama de antipadrão testar só com modelos baratos."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Em bibliotecas internas distribuídas por um feed NuGet corporativo, incluir um `SKILL.md` com os padrões da casa: como registrar serviços, como tratar erros, o que nunca fazer. O agente de cada time passaria a receber a regra junto com o pacote.",
+            "No sentido inverso, incluir os `SKILL.md` de pacotes de terceiros na revisão de dependências, já que passam a ser texto que o seu agente vai obedecer. Ambas são ideias de aplicação; nada foi testado."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "Skills em pacotes NuGet (.NET Blog)"
+            ],
+            [
+              "Linguagem e plataforma",
+              ".NET e NuGet"
+            ],
+            [
+              "Onde roda",
+              "Local, a partir do `dotnet restore`"
+            ],
+            [
+              "Licença e custo",
+              "O post não informa"
+            ],
+            [
+              "Estágio",
+              "Não declarado como preview nem como estável"
+            ],
+            [
+              "Maturidade",
+              "Inicial: faltam o guia do mantenedor e o suporte no MCP do NuGet"
+            ]
+          ],
+          "difficulty": 1,
+          "difficultyNote": "**Baixa** para consumir. Para publicar as suas, **média**: o guia oficial ainda não saiu."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Risco novo, reconhecido no texto: “Agent consumption of markdown adds a new threat vector that needs to be considered.” A recomendação é usar só pacotes de mantenedores em que você confia.",
+            "O post não descreve controles concretos, como assinatura ou revisão das skills.",
+            "Uma skill mal escrita ou mal testada pode piorar o resultado em vez de ajudar, alerta o autor.",
+            "As ferramentas `dotnet-inspect` e `dotnet-package-skills` não foram testadas para esta edição."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "Agent consumption of markdown adds a new threat vector that needs to be considered.",
+          "pt": "O consumo de Markdown por agentes cria um novo vetor de ameaça, que precisa ser considerado.",
+          "who": "Richard Lander, no .NET Blog",
+          "url": "https://devblogs.microsoft.com/dotnet/delivering-skills-in-nuget-packages/"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "3 nov 2026",
+              "[Post publicado](https://devblogs.microsoft.com/dotnet/delivering-skills-in-nuget-packages/) no .NET Blog, assinado por Richard Lander."
+            ],
+            [
+              "10 nov 2026",
+              "O [anúncio do .NET 11](https://devblogs.microsoft.com/dotnet/announcing-dotnet-11/) lista “.NET Skills” entre as novidades ligadas a IA."
+            ],
+            [
+              "12 nov 2026",
+              "O post constava entre os dez itens mais recentes do feed RSS do blog no momento da coleta."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · RSS",
+              "label": "Feed do .NET Blog",
+              "url": "https://devblogs.microsoft.com/dotnet/feed/",
+              "note": "lido em 12 nov 2026 · sem métrica de popularidade"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Delivering Skills in NuGet packages",
+              "url": "https://devblogs.microsoft.com/dotnet/delivering-skills-in-nuget-packages/",
+              "note": "post oficial, 3 nov 2026"
+            },
+            {
+              "role": "Especificação citada · não lida",
+              "label": "agentskills.io",
+              "url": "https://agentskills.io"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lido diretamente: o post, a partir do HTML bruto. Não lidos: a especificação em agentskills.io e os repositórios das ferramentas citadas. O que o post não informa aparece no texto como “não informa”, sem preenchimento."
+        },
+        {
+          "type": "why",
+          "text": "É .NET e agentes na mesma frase, vindo do blog oficial. Não estava em nenhum ranking de popularidade: foi achado no RSS, e entra pelo encaixe com o seu trabalho."
+        }
+      ]
+    },
+    {
+      "id": "pypi-provenance",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "seal",
+            "hue": 46,
+            "alt": "cinco selos em fila, três carimbados e dois em branco"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "Python · Cadeia de suprimentos",
+          "text": "O selo de procedência do PyPI e quem fica sem ele",
+          "short": "Selo de procedência do PyPI",
+          "readMin": 5,
+          "tags": [
+            "python",
+            "seguranca",
+            "open-source"
+          ],
+          "discovery": [
+            "Fórum"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "O site de onde se baixam bibliotecas Python passou a mostrar se cada versão consegue provar de onde veio. Serve para detectar pacotes adulterados. Só alguns serviços conseguem emitir essa prova, e quem está fora deles aparece como “sem procedência”."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "Quando você instala um pacote, confia que o arquivo publicado veio mesmo do código do projeto. “Procedência” é a prova disso: um atestado assinado que liga o arquivo ao pipeline que o construiu."
+        },
+        {
+          "type": "paragraph",
+          "text": "O PyPI passou a exibir esse estado em cada release. O problema levantado no fórum é que só consegue o atestado quem publica por um provedor aprovado, e a lista é curta. Quem está fora dela aparece como “sem procedência” sem ter feito nada de errado."
+        },
+        {
+          "type": "callout",
+          "text": "É o lacre de fábrica. Ele não garante que o produto é bom, só que veio de onde diz ter vindo. O incômodo começa quando a vitrine passa a destacar quem está sem lacre, inclusive quem nunca teve como obtê-lo."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "PyPI",
+              "o repositório público de bibliotecas Python."
+            ],
+            [
+              "Procedência",
+              "prova de que um arquivo foi gerado a partir de um código e de uma automação específicos."
+            ],
+            [
+              "Atestado",
+              "o documento assinado digitalmente que carrega essa prova."
+            ],
+            [
+              "Trusted Publishing",
+              "forma de publicar no PyPI em que a automação se identifica sozinha, sem senha guardada."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "Segundo o post do PyPI, uma nova aba de segurança mostra, por release, três estados: procedência completa, parcial ou ausente.",
+            "Há também avisos: procedência incompleta, inconsistente, alterada ou perdida.",
+            "No tópico, William Woodruff explica que Trusted Publishing é um mecanismo de autenticação, e que os atestados (PEP 740) hoje são construídos sobre ele.",
+            "O autor do tópico, Ricardo Newbery, cita GitHub e GitLab como provedores aceitos. O Codeberg não é, e há um pedido aberto para incluí-lo."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A fonte não traz capturas de tela; nenhuma imagem foi inventada para esta matéria."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Um projeto que migra do GitHub Actions para o Codeberg poderia passar a exibir “Loss of provenance”.",
+            "Um projeto que sempre esteve no Codeberg mostra “No provenance” em todos os releases, o que o autor do tópico diz que os usuários leem como alerta.",
+            "Um participante (fungi) descreve a alternativa que usa: publicar na própria forja, com procedência e assinaturas geradas pelo CI, e tratar o PyPI como espelho secundário."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "O post do PyPI ressalva que “No provenance” é típico de releases antigos ou de projetos que ainda não configuraram Trusted Publishing, e que não indica necessariamente algo malicioso.",
+            "Atestados continuam opcionais. Woodruff afirma não ver futuro previsível em que instaladores como pip e uv os exijam.",
+            "Para ampliar a lista de provedores, ele cita dois obstáculos: tempo de revisão e segurança das chaves do provedor de identidade. Não há prazo."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Se você publica pacotes Python a partir do GitLab.com, o caminho com Trusted Publishing existe, segundo o tópico. Para GitLab auto-hospedado, um participante diz que “aparentemente” funciona, mas sem documentação: vale testar antes de depender disso.",
+            "Como consumidor, usar o indicador como mais um sinal ao avaliar uma dependência, nunca como veredito. A recomendação é minha, apoiada na ressalva do próprio PyPI."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "Indicadores de segurança do PyPI e Trusted Publishing"
+            ],
+            [
+              "Linguagem e plataforma",
+              "Python; PyPI (pypi.org)"
+            ],
+            [
+              "Onde roda",
+              "Serviço online; a publicação parte do seu CI"
+            ],
+            [
+              "Licença e custo",
+              "O PyPI é gratuito"
+            ],
+            [
+              "Natureza",
+              "Discussão em fórum, com 42 posts em 12 nov 2026"
+            ],
+            [
+              "Maturidade",
+              "Interface nova; sem prazo para novos provedores"
+            ]
+          ],
+          "difficulty": 2,
+          "difficultyNote": "**Média.** Exige entender identidade de CI e assinatura; configurar em um provedor aceito tende a ser rápido."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Woodruff avisa que fala em caráter pessoal e que não decide pelo PyPI. Nenhum participante aparece marcado como administrador do fórum.",
+            "Há desacordo aberto sobre se exibir “No provenance” para quem nunca pôde atestar é neutro ou alarmante, e sobre a proporção do aviso “Loss of provenance”.",
+            "A afirmação de que avisos de mudança somem após 14 dias veio de uma leitura do código-fonte feita por um participante e não foi conferida.",
+            "Dois posts do tópico estavam ocultos por sinalização da comunidade.",
+            "A documentação do PyPI sobre os requisitos para novos provedores não foi lida."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "There is no foreseeable future in which installers (like pip and uv) can impose attestations as a requirement.",
+          "pt": "Não há futuro previsível em que instaladores como pip e uv possam impor atestados como requisito.",
+          "who": "William Woodruff, em 7 nov 2026",
+          "url": "https://discuss.python.org/t/pypis-new-security-indicators-and-unequal-access-to-trusted-publishing/109930"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "7 nov 2026",
+              "[Tópico aberto](https://discuss.python.org/t/pypis-new-security-indicators-and-unequal-access-to-trusted-publishing/109930) por Ricardo Newbery (newbery); último post em 10 nov 2026."
+            ],
+            [
+              "12 nov 2026",
+              "No momento da coleta: 42 posts, 27 respostas e 861 visualizações."
+            ],
+            [
+              "6 nov 2026",
+              "[Post do blog do PyPI](https://blog.pypi.org/posts/2026-11-06-ui-updates-complete/) sobre a nova interface. A data vem do endereço da página."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · Fórum",
+              "label": "Mais lidos da semana em discuss.python.org",
+              "url": "https://discuss.python.org/top?period=weekly",
+              "note": "12 nov 2026 · 42 posts, 861 visualizações"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "PyPI's new security indicators and unequal access to Trusted Publishing",
+              "url": "https://discuss.python.org/t/pypis-new-security-indicators-and-unequal-access-to-trusted-publishing/109930",
+              "note": "tópico no fórum"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Post do blog do PyPI sobre a nova interface",
+              "url": "https://blog.pypi.org/posts/2026-11-06-ui-updates-complete/",
+              "note": "data inferida do endereço"
+            },
+            {
+              "role": "Pedido citado no tópico · não lido",
+              "label": "warehouse, issue 19786 (suporte ao Codeberg)",
+              "url": "https://github.com/pypi/warehouse/issues/19786"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lidos diretamente: os 42 posts do tópico, pelo JSON do fórum, e o post do blog do PyPI. Não lidos: a documentação de Trusted Publishing, a issue 19786 e o código-fonte do PyPI."
+        },
+        {
+          "type": "why",
+          "text": "Python e segurança de dependências, com um detalhe que toca o seu dia a dia: o GitLab aparece entre os provedores aceitos. Veio de um fórum, origem que rankings de popularidade costumam ignorar."
+        }
+      ]
+    },
+    {
+      "id": "claude-code-email",
+      "kind": "story",
+      "blocks": [
+        {
+          "type": "illustration",
+          "art": {
+            "motif": "leak",
+            "hue": 2,
+            "alt": "linhas de um cabeçalho com um trecho escapando para fora"
+          }
+        },
+        {
+          "type": "title",
+          "kicker": "Alerta · Privacidade",
+          "text": "Quando o agente assina com o seu e-mail",
+          "short": "Claude Code e o e-mail no User-Agent",
+          "readMin": 6,
+          "tags": [
+            "seguranca",
+            "ia-agentes"
+          ],
+          "discovery": [
+            "Hacker News"
+          ]
+        },
+        {
+          "type": "summary",
+          "text": "Um defeito de privacidade relatado no Claude Code, assistente de programação da Anthropic: ao acessar sites, ele às vezes se identificava usando o e-mail do usuário. Vale conferir a versão instalada e se o bloqueio que a empresa adicionou está ligado."
+        },
+        {
+          "type": "section",
+          "text": "O problema e por que importa"
+        },
+        {
+          "type": "paragraph",
+          "text": "Toda requisição web leva um cabeçalho chamado User-Agent, que diz ao site quem está pedindo a página. Navegadores mandam ali o nome e a versão do programa. Alguns sites pedem que robôs informem também um contato."
+        },
+        {
+          "type": "paragraph",
+          "text": "Segundo a explicação publicada por uma integrante da equipe, o e-mail da conta tinha sido incluído no contexto do modelo para evitar que ele inventasse nomes de autor. Ao montar por conta própria um comando como `curl`, o modelo às vezes usava esse e-mail como contato. Um dado posto ali por conveniência acabou saindo para terceiros."
+        },
+        {
+          "type": "callout",
+          "text": "É como dar ao estagiário o seu cartão de visitas “só para ele saber quem você é” e descobrir que ele passou a entregá-lo em todo balcão onde pediram identificação."
+        },
+        {
+          "type": "section",
+          "text": "Palavras que aparecem aqui"
+        },
+        {
+          "type": "glossary",
+          "terms": [
+            [
+              "User-Agent",
+              "o campo de toda requisição web em que o programa diz quem é."
+            ],
+            [
+              "Contexto do modelo",
+              "as informações que o assistente recebe junto com o seu pedido e pode usar na resposta."
+            ],
+            [
+              "`curl`",
+              "comando de terminal que busca páginas e dados na web."
+            ],
+            [
+              "Mod ou plugin",
+              "complemento que altera o comportamento do programa."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Como funciona"
+        },
+        {
+          "type": "list",
+          "ordered": true,
+          "items": [
+            "**5 nov 2026.** Um usuário abre a issue 107757 dizendo que o Claude Code divulgou o e-mail dele a terceiros no cabeçalho `User-Agent` durante buscas na web. Ele informa a versão 2.1.318, em macOS.",
+            "**5 nov 2026.** Um contribuidor do projeto responde que um mod embutido, `cc-plugin-privacy`, bloqueia esse comportamento “de forma determinística” a partir da versão 2.1.317, vem ligado por padrão e pode ser desligado em `/plugins`.",
+            "**6 nov 2026.** No Hacker News, uma pessoa que se apresenta como parte da equipe do Claude Code pede desculpas, explica a origem e diz que o e-mail será removido do contexto dado ao modelo na versão seguinte, prevista para o início da semana seguinte.",
+            "**12 nov 2026.** A issue continuava aberta, com 117 comentários. Esta edição não verificou se a versão prometida já saiu."
+          ]
+        },
+        {
+          "type": "note",
+          "text": "A fonte não traz capturas de tela; nenhuma imagem foi inventada para esta matéria."
+        },
+        {
+          "type": "section",
+          "text": "Exemplos concretos"
+        },
+        {
+          "type": "list",
+          "items": [
+            "**Conferir a versão.** O bloqueio é atribuído à versão 2.1.317 em diante.",
+            "**Conferir o bloqueio.** O comando `/plugins` deve listar `cc-plugin-privacy` como ativo.",
+            "**Testar você mesmo.** Um texto de usuário no DEV descreve subir um servidor HTTP local, pedir ao agente que acesse esse endereço e ler o User-Agent registrado. O roteiro foi lido por resumo e não foi executado para esta edição."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "No dia a dia"
+        },
+        {
+          "type": "facts",
+          "items": [
+            "O que está confirmado nas fontes: o relato, a resposta com o mod de bloqueio e a explicação pública com a promessa de remover o dado do contexto.",
+            "O que não está: o tamanho do problema. Comentaristas discordam sobre com que frequência o envio acontecia e em que tipo de site."
+          ]
+        },
+        {
+          "type": "hypothesis",
+          "paragraphs": [
+            "Vale para qualquer agente com acesso à rede, não só este: tudo o que entra no contexto do modelo pode sair em uma chamada que ele mesmo escreve. Uma regra explícita nas instruções do agente (“identifique-se com um nome genérico de cliente, nunca com dados pessoais”) é barata.",
+            "Para o que for sensível, preferir uma garantia que não dependa de o modelo lembrar da regra, como um bloqueio no próprio cliente ou um proxy que inspeciona os cabeçalhos de saída. São recomendações minhas; as fontes não as fazem nesses termos."
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Ficha"
+        },
+        {
+          "type": "factsheet",
+          "rows": [
+            [
+              "Nome",
+              "Issue 107757 no repositório anthropics/claude-code"
+            ],
+            [
+              "Produto",
+              "Claude Code, ferramenta comercial da Anthropic"
+            ],
+            [
+              "Plataforma do relato",
+              "macOS, versão 2.1.318"
+            ],
+            [
+              "Estado",
+              "Aberta em 12 nov 2026, com 117 comentários"
+            ],
+            [
+              "Custo",
+              "Conferir versão e plugin não custa nada"
+            ],
+            [
+              "Natureza",
+              "Relato de falha, não uma ferramenta nova"
+            ]
+          ],
+          "difficulty": 1,
+          "difficultyNote": "**Baixa.** A checagem são dois comandos; o teste com servidor local leva alguns minutos."
+        },
+        {
+          "type": "section",
+          "text": "Limites, riscos e maturidade"
+        },
+        {
+          "type": "list",
+          "items": [
+            "Há uma tensão não resolvida nas fontes lidas: o relato cita a versão 2.1.318, posterior à 2.1.317 em que o bloqueio teria entrado. O contribuidor pediu que falhas no bloqueio fossem reportadas.",
+            "O autor da issue atribui ao vazamento dezenas de e-mails de golpe por dia. Essa relação de causa não foi demonstrada em nenhuma fonte lida.",
+            "Só os primeiros 100 dos 117 comentários foram lidos, e a discussão do Hacker News foi lida por resumo automático, com exceção do comentário da equipe, conferido diretamente.",
+            "Nota de transparência: esta edição foi escrita com um modelo da Anthropic, a mesma empresa do produto em questão. Por isso o texto se limita ao que está nas fontes ligadas."
+          ]
+        },
+        {
+          "type": "quote",
+          "text": "We're removing the account email address from the context Claude Code gives the model.",
+          "pt": "Estamos removendo o e-mail da conta do contexto que o Claude Code entrega ao modelo.",
+          "who": "lydia_hallie, no Hacker News, em 6 nov 2026",
+          "url": "https://news.ycombinator.com/item?id=50388176"
+        },
+        {
+          "type": "section",
+          "text": "Evidência recente, com data"
+        },
+        {
+          "type": "evidence",
+          "rows": [
+            [
+              "5 nov 2026",
+              "[Issue 107757](https://github.com/anthropics/claude-code/issues/107757) aberta por taylor-edwards. Em 12 nov, a API do GitHub a mostrava aberta, com 117 comentários."
+            ],
+            [
+              "5 nov 2026",
+              "[Resposta](https://github.com/anthropics/claude-code/issues/107757#issuecomment-6672259159) de poteat, marcado como contribuidor do repositório, anunciando o mod `cc-plugin-privacy`."
+            ],
+            [
+              "6 nov 2026",
+              "[Comentário](https://news.ycombinator.com/item?id=50388176) de lydia_hallie no Hacker News: “I work on Claude Code”, com a explicação e o pedido de desculpas."
+            ],
+            [
+              "5 nov 2026",
+              "[Tópico no Hacker News](https://news.ycombinator.com/item?id=50385272): 1.615 pontos e 535 comentários na coleta."
+            ]
+          ]
+        },
+        {
+          "type": "section",
+          "text": "Fontes"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "role": "Onde foi descoberta · Hacker News",
+              "label": "“Claude Code sends your email address to websites”",
+              "url": "https://news.ycombinator.com/item?id=50385272",
+              "note": "5 nov 2026 · 1.615 pontos, 535 comentários na coleta"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Issue 107757: Privacy violation in User-Agent header",
+              "url": "https://github.com/anthropics/claude-code/issues/107757",
+              "note": "aberta em 5 nov 2026; seguia aberta em 12 nov"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Resposta de um contribuidor do projeto na issue",
+              "url": "https://github.com/anthropics/claude-code/issues/107757#issuecomment-6672259159",
+              "note": "5 nov 2026"
+            },
+            {
+              "role": "Fonte primária",
+              "label": "Explicação de uma integrante da equipe no Hacker News",
+              "url": "https://news.ycombinator.com/item?id=50388176",
+              "note": "6 nov 2026"
+            },
+            {
+              "role": "Roteiro de checagem · lido por resumo",
+              "label": "Texto de um usuário no DEV",
+              "url": "https://dev.to/slabb/claude-code-was-mailing-your-email-address-to-every-website-it-visited-the-user-agent-leak-the-12k6"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "text": "Lidos diretamente, pelas APIs do GitHub e do Hacker News: o corpo da issue, a resposta do contribuidor e o comentário da equipe. Lidos por resumo automático: o restante do tópico no Hacker News e o texto no DEV. Não verificado: se a correção prometida já foi publicada."
+        },
+        {
+          "type": "why",
+          "text": "É a história mais votada da semana entre as selecionadas e, mesmo assim, fecha a lista: tem só duas das suas etiquetas, e popularidade vale 15 pontos em 100. Entrou porque diz respeito a qualquer pessoa que deixe um agente navegar em seu nome."
+        }
+      ]
+    },
+    {
+      "id": "nota-dotnet-11",
+      "kind": "note",
+      "blocks": [
+        {
+          "type": "title",
+          "kicker": "nota rápida",
+          "text": ".NET 11 chega com C# 15 e um template de servidor MCP",
+          "date": "10 nov 2026",
+          "discovery": [
+            "Reddit",
+            "RSS"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "A Microsoft anunciou o .NET 11 como versão STS, com dois anos de suporte, e o C# 15 como linguagem padrão dos projetos que miram a nova versão. Para quem vive de ASP.NET e SQL Server, o post destaca tipos união com suporte a JSON no ASP.NET Core, OpenAPI 3.2 por padrão, índices vetoriais e busca vetorial aproximada no SQL Server pelo EF Core 11 (experimental) e o template `dotnet new mcpserver`. Dois avisos do próprio texto: .NET 8 e .NET 9 chegam ao fim do suporte em 10 nov 2026, e instalar o SDK novo não muda sozinho o alvo do seu app."
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "label": "Anúncio no .NET Blog",
+              "url": "https://devblogs.microsoft.com/dotnet/announcing-dotnet-11/"
+            },
+            {
+              "label": "Descoberta: r/programming",
+              "url": "https://www.reddit.com/r/programming/comments/1xstxzv/announcing_net_11/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nota-rust-1-100",
+      "kind": "note",
+      "blocks": [
+        {
+          "type": "title",
+          "kicker": "nota rápida",
+          "text": "Rust 1.100.0 estabiliza o tipo never e os alocadores customizados",
+          "date": "12 nov 2026",
+          "discovery": [
+            "Lobsters",
+            "Hacker News"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "As notas da versão 1.100.0 listam a estabilização do tipo never, de `extern \"custom\"` e dos alocadores customizados (`std::alloc::Allocator`, `Global` e `System`), além de `-Cprofile-sample-use` no compilador e da promoção de `wasm32-wasip3` a Tier 2. Esta nota apenas reproduz itens das notas oficiais; o impacto prático de cada um não foi avaliado."
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "label": "Notas de lançamento no GitHub",
+              "url": "https://github.com/rust-lang/rust/releases/tag/1.100.0"
+            },
+            {
+              "label": "Descoberta: Lobsters",
+              "url": "https://lobste.rs/s/81hnjw"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nota-dev-ciclo",
+      "kind": "note",
+      "blocks": [
+        {
+          "type": "title",
+          "kicker": "nota rápida",
+          "text": "O site DEV deixou assistentes de IA otimizando o próprio código em ciclo contínuo",
+          "date": "9 nov 2026",
+          "discovery": [
+            "DEV"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Ben Halpern conta como o DEV pôs agentes em laços automáticos para caçar lentidão: a requisição média dentro do Rails teria caído de cerca de 70 ms para 16 ms, com 475 PRs mesclados no Forem em 30 dias. Os laços rodam em worktrees isolados, um modelo de outra família revisa antes do auto-merge de mudanças de baixo risco, e verificações determinísticas em Python evitam gastar tokens quando a fila está cheia. São números do autor, sem verificação externa. O custo não está no artigo; em um comentário, ele estima cerca de US$ 180 por mês além das assinaturas que já tinha."
+        },
+        {
+          "type": "image",
+          "src": "https://dev-to-uploads.s3.us-east-2.amazonaws.com/uploads/articles/h7xg9nikr3u2hqzkth0q.png",
+          "alt": "Gráfico de linhas “Web request latency percentiles”, de 8 de outubro a 5 de novembro. A linha p99 cai de cerca de 800 ms para perto de 200 ms; a p95, de cerca de 200 ms para menos de 100 ms; a p50 fica próxima de zero.",
+          "caption": "Percentis de latência publicados no artigo, de 8 out a 5 nov.",
+          "credit": "gráfico do artigo de Ben Halpern no DEV",
+          "href": "https://dev.to/dailycontext/our-looping-factory-cut-dev-page-load-time-by-75-and-counting-1hnf"
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "label": "Artigo no DEV",
+              "url": "https://dev.to/dailycontext/our-looping-factory-cut-dev-page-load-time-by-75-and-counting-1hnf"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nota-zellij-046",
+      "kind": "note",
+      "blocks": [
+        {
+          "type": "title",
+          "kicker": "nota rápida",
+          "text": "Zellij 0.46.0 agora também é um terminal de desktop",
+          "date": "11 nov 2026",
+          "discovery": [
+            "Reddit via Hackertab"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "O Zellij, multiplexador de terminal escrito em Rust e licenciado em MIT, ganhou o comando `zellij terminal`, que o faz rodar como terminal próprio em Linux, macOS e Windows. As notas dizem que nada muda para quem o usa dentro de outro terminal. Avisos das próprias notas: os builds musl não incluem o terminal, e o CHANGELOG traz mudanças incompatíveis. O post no r/rust destaca o uso como biblioteca; isso não foi conferido nas notas."
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "label": "Notas da versão 0.46.0",
+              "url": "https://github.com/zellij-org/zellij/releases/tag/v0.46.0"
+            },
+            {
+              "label": "Descoberta: r/rust",
+              "url": "https://www.reddit.com/r/rust/comments/1xtercc/zellij_0460_just_released_rust_developers_can_now/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nota-linkwarden-217",
+      "kind": "note",
+      "blocks": [
+        {
+          "type": "title",
+          "kicker": "nota rápida",
+          "text": "Linkwarden 2.17: guarda uma cópia das páginas que você salva",
+          "date": "10 nov 2026",
+          "discovery": [
+            "Reddit"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "O Linkwarden guarda uma cópia permanente de cada página que você salva, para que a referência continue acessível quando o original sair do ar. A versão 2.17 traz mudanças no app web, no app móvel e na extensão de navegador. É open source (AGPL-3.0, TypeScript) e pode ser auto-hospedado; também existe como serviço na nuvem, cujo preço não foi verificado."
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "label": "Notas da versão 2.17",
+              "url": "https://github.com/linkwarden/linkwarden/releases/tag/v2.17.0"
+            },
+            {
+              "label": "Descoberta: r/selfhosted",
+              "url": "https://www.reddit.com/r/selfhosted/comments/1xsuicw/announcing_linkwarden_217_opensource/"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nota-codex-security",
+      "kind": "note",
+      "blocks": [
+        {
+          "type": "title",
+          "kicker": "nota rápida",
+          "text": "codex-security: ferramenta de segurança da OpenAI em alta no GitHub",
+          "date": "12 nov 2026",
+          "discovery": [
+            "GitHub Trending"
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "O repositório openai/codex-security, descrito como CLI e SDK TypeScript para encontrar, validar e corrigir vulnerabilidades, ganhou 663 estrelas no dia e soma cerca de 12,3 mil. É Apache-2.0 e foi criado em julho de 2026. Só os metadados foram lidos: funcionamento, custo e dependência de conta não foram verificados, e por isso ele aparece só como nota."
+        },
+        {
+          "type": "sources",
+          "links": [
+            {
+              "label": "openai/codex-security",
+              "url": "https://github.com/openai/codex-security"
+            },
+            {
+              "label": "Descoberta: Trending diário",
+              "url": "https://github.com/trending?since=daily"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "collection": [
+    {
+      "source": "GitHub Trending",
+      "records": 24,
+      "state": "answered"
+    },
+    {
+      "source": "Hacker News",
+      "records": 130,
+      "state": "answered",
+      "note": "há sobreposição entre as duas listas"
+    },
+    {
+      "source": "Lobsters",
+      "records": 25,
+      "state": "answered"
+    },
+    {
+      "source": "DEV",
+      "records": 40,
+      "state": "answered"
+    },
+    {
+      "source": "Reddit (RSS)",
+      "records": 75,
+      "state": "partial",
+      "note": "r/opensource e r/dotnet responderam 429; o endpoint `.json` respondeu 403"
+    },
+    {
+      "source": "Reddit via Hackertab",
+      "records": 25,
+      "state": "answered",
+      "note": "serviço de terceiro, sem documentação pública verificada"
+    },
+    {
+      "source": "Product Hunt",
+      "records": 50,
+      "state": "partial",
+      "note": "páginas de produto responderam 403: só título e slogan foram lidos"
+    },
+    {
+      "source": "Fóruns",
+      "records": 58,
+      "state": "answered"
+    },
+    {
+      "source": ".NET Blog",
+      "records": 10,
+      "state": "answered"
+    },
+    {
+      "source": "Blog da Apiiro",
+      "records": 0,
+      "state": "failed",
+      "note": "403 para leitura automática"
+    }
+  ],
+  "leftOut": [
+    {
+      "title": "Senhas em arquivos públicos (Apiiro)",
+      "reason": "Chegou a 626 pontos no Hacker News, mas o artigo original respondeu com erro 403 à leitura automática. Sem a fonte primária, a edição não resume. Fica o link da [discussão](https://news.ycombinator.com/item?id=50407882)."
+    },
+    {
+      "title": "Foxpit e Yogurt (Product Hunt)",
+      "reason": "Os slogans pareciam relevantes: “Run Claude Code, Codex & OpenCode as one AI team” e “Free, private, open-source alternative to Granola”. As páginas dos produtos responderam 403, então site oficial, licença e custo ficaram sem verificação. Entram só como pista: [Foxpit](https://www.producthunt.com/products/foxpit) e [Yogurt](https://www.producthunt.com/products/yogurt)."
+    },
+    {
+      "title": "r/opensource e r/dotnet",
+      "reason": "Responderam 429 nas tentativas feitas. Nada foi inventado para ocupar o lugar."
+    },
+    {
+      "title": "As notícias mais votadas da semana",
+      "reason": "Negócios, troca de comando em empresas e lançamentos de modelos dominaram as listas. Ficaram fora porque não mudam o seu trabalho amanhã cedo."
+    },
+    {
+      "title": "Repetições",
+      "reason": "Este protótipo não tem edições anteriores. Não há como saber se algum destes projetos já teria aparecido antes, e nenhuma verificação desse tipo foi feita."
+    }
+  ]
+}
