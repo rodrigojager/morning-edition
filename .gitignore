@@ -1,0 +1,23 @@
+# Defensive ignores (jproject). AI artifacts never belong in this repository.
+*.log
+*.tmp
+*.bak
+*.bak-*
+*_v[0-9]*.*
+*_final*.*
+*_old*.*
+*_copy*.*
+.env
+.env.*
+!.env.example
+.scratch/
+.zvec-grep/
+node_modules/
+
+# Build outputs
+target/
+dist/
+build/
+out/
+bin/
+obj/
