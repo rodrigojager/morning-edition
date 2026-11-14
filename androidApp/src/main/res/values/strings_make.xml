@@ -4,6 +4,7 @@
     <string name="make_now">Gerar edição agora</string>
     <string name="make_hint">Coleta as fontes, a IA escolhe o que vale a pena e escreve cada matéria no formato da revista. Cada matéria é conferida antes de entrar.</string>
     <string name="make_collecting">Coletando… %1$d de %2$d fontes</string>
+    <string name="make_deepening">Aprofundando… %1$d de %2$d repositórios</string>
     <string name="make_choosing">A IA está escolhendo o que entra na edição…</string>
     <string name="make_writing">Escrevendo e conferindo… %1$d de %2$d matérias</string>
     <string name="make_saving">Guardando a edição…</string>

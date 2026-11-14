@@ -26,7 +26,7 @@ names. The folder is taken from the environment variable `DOBRA_SECRETS`, else t
 `dobra.secretsDir`, else `../_secrets` next to the repository. Without it the release build stops with a message
 saying what is missing.
 
-Release 0.3.3: `androidApp-release.apk`, version code 6, minSdk 28 (Android 9), targetSdk 35.
+Release 0.3.4: `androidApp-release.apk`, version code 7, minSdk 28 (Android 9), targetSdk 35.
 
 ## Magazine instructions and editions
 
@@ -84,6 +84,23 @@ requests currently return HTTP 403, and a saved JavaScript shell has no readable
 collector is marked **em reparo** and fails explicitly rather than supplying invented items. Python forum collection
 currently reads the Python feed; the older demonstration also contained manually selected Rust material. Reddit
 subfeeds can refuse access individually, and live source availability is not guaranteed by saved-response tests.
+
+GitHub repository links are investigated deterministically before AI selection, including repositories discovered
+outside Trending. The app resolves the default branch's latest commit and lists its tree, then reads up to eight
+eligible files: README, linked local guides, installation/usage docs, examples, SKILL.md, package manifests, license
+and changelog. It ignores generated/vendor directories, binary files, translated READMEs and files over 64 KB.
+Each file contributes up to 4,000 characters, at most 32,000 in total; selection receives a bounded excerpt from
+every fetched file, and writing receives the fuller evidence with commit-pinned citation URLs. This does not
+execute or test the discovered software. Local documentation links are followed only when the eligible file is
+present in the returned tree; external documentation websites are not crawled.
+
+Investigation has a 45-second timeout per repository and an in-process budget of 48 GitHub API calls per rolling
+hour, leaving headroom under the unauthenticated API quota. Raw file downloads use separate public URLs. A 403/429
+pauses further investigation requests for an hour; partial results remain usable and ordinary page reading remains
+available. Successful repository evidence is cached for 15 minutes, failures for one minute, and unchanged
+commit-pinned files are reused in a bounded memory cache. Caches and the local budget reset when the process ends;
+GitHub's own limits still apply. A separate progress phase shows repositories investigated. No GitHub token, new
+runtime or dependency is required. Existing custom collector scripts are preserved.
 
 ChatGPT collector generation uses the saved OAuth account and the model/effort selected for the collector job;
 it does not require an API key. The **Usar esta configuração em todas as tarefas** action also configures that job.

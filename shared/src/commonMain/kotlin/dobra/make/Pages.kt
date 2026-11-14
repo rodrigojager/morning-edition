@@ -3,7 +3,14 @@ package dobra.make
 /** Reads the primary page of a record for the writing step. Answers the page's plain text, or null when unreadable. */
 fun interface PageReader {
     suspend fun read(url: String): String?
+
+    fun canDeepen(url: String): Boolean = false
+
+    /** Additional primary evidence, collected before curation without asking the model to browse. */
+    suspend fun deepen(url: String): List<PageEvidence> = emptyList()
 }
+
+data class PageEvidence(val url: String, val text: String)
 
 /** Turns an HTML page into the plain text the model reads: no scripts, styles, tags or repeated spaces. */
 object PageText {

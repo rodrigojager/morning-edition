@@ -141,6 +141,44 @@ class EditionMakerTest {
         {"type": "sources", "links": [{"label": "Blog", "url": "https://invented.example.com/dotnet"}]}]}"""
 
     @Test
+    fun repositoryEvidenceArrivesBeforeSelectionAndCanBeCitedWithoutAnotherPageFetch() = runBlocking {
+        val doc = "https://github.com/acme/agent-guard/blob/${"a".repeat(40)}/docs/usage.md"
+        val fetched = ArrayList<String>()
+        val pages = object : PageReader {
+            override fun canDeepen(url: String) = url == tool.link
+            override suspend fun deepen(url: String): List<PageEvidence> {
+                fetched += url
+                return listOf(PageEvidence(doc, "Install using dotnet tool install agent-guard. Run agent-guard check."))
+            }
+            override suspend fun read(url: String): String? = error("Already investigated: must not fetch again")
+        }
+        val ai = Recorded(listOf("""{"keep":[{"records":["r1"],"kind":"story"}],"leftOut":[]}""",
+            toolItem.replace("\"url\": \"${tool.link}\"", "\"url\": \"$doc\"")))
+        val progress = ArrayList<MakeProgress>()
+        val result = maker(ai, pages).make(magazine.copy(targetItems = 1, minimumItems = 1),
+            run(listOf(tool.copy(rawText = "A tool."))), onProgress = { progress += it })
+        assertNotNull(result.edition)
+        assertEquals(listOf(tool.link), fetched)
+        assertTrue(ai.prompts.all { doc in it && "agent-guard check" in it })
+        assertEquals(listOf(0, 1), progress.filter { it.stage == MakeStage.DEEPENING }.map { it.done })
+        assertTrue(progress.indexOfFirst { it.stage == MakeStage.CHOOSING } > progress.indexOfLast { it.stage == MakeStage.DEEPENING })
+    }
+
+    @Test
+    fun repositoryInvestigationFailureStillAllowsOrdinaryCurationAndWriting() = runBlocking {
+        val pages = object : PageReader {
+            override fun canDeepen(url: String) = true
+            override suspend fun deepen(url: String): List<PageEvidence> = error("Network unavailable")
+            override suspend fun read(url: String) = "Primary page still available"
+        }
+        val ai = Recorded(listOf("""{"keep":[{"records":["r1"],"kind":"story"}],"leftOut":[]}""", toolItem))
+        val result = maker(ai, pages).make(magazine.copy(targetItems = 1, minimumItems = 1), run(listOf(tool)))
+        assertNotNull(result.edition)
+        assertTrue("could not be obtained" in ai.prompts.first())
+        assertTrue("Primary page still available" in ai.prompts.last())
+    }
+
+    @Test
     fun savedRecordsAndRecordedAnswersMakeAStoredUnreadEditionOfValidItems() = runBlocking {
         val unreadBefore = store.unread.count(magazine.id)
         val ai = Recorded(listOf(selection, toolItem, noteItem))

@@ -45,6 +45,7 @@ class EditionNotices(private val context: Context) {
     fun progressText(progress: MakeProgress?): String = when (progress?.stage) {
         null -> context.getString(R.string.work_progress_start)
         MakeStage.COLLECTING -> context.getString(R.string.work_progress_collecting, progress.done, progress.total)
+        MakeStage.DEEPENING -> context.getString(R.string.make_deepening, progress.done, progress.total)
         MakeStage.CHOOSING -> context.getString(R.string.work_progress_choosing)
         MakeStage.WRITING -> context.getString(R.string.work_progress_writing, progress.done, progress.total)
         MakeStage.SAVING -> context.getString(R.string.work_progress_saving)

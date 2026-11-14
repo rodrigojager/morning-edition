@@ -14,6 +14,8 @@ import dobra.make.MakeStage
 import dobra.make.MissingSetup
 import dobra.make.PageReader
 import dobra.make.PageText
+import dobra.make.GitHubEvidence
+import dobra.make.PageEvidence
 import dobra.make.ReformatResult
 import dobra.make.RewriteSetup
 import dobra.model.Magazine
@@ -137,6 +139,12 @@ class MakeRunner(
 
 /** Reads a record's primary page over the network, as plain text, for the writing step. */
 class HttpPageReader(private val transport: FetchTransport = HttpFetchTransport()) : PageReader {
+    private val github = GitHubEvidence(transport, System::currentTimeMillis)
+
+    override fun canDeepen(url: String) = GitHubEvidence.repository(url) != null
+
+    override suspend fun deepen(url: String): List<PageEvidence> = github.read(url)
+
     override suspend fun read(url: String): String? {
         if (!url.startsWith("https://") && !url.startsWith("http://")) return null
         val response = transport.get(url)

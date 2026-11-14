@@ -89,6 +89,7 @@ internal fun LeftOutList(list: List<LeftOut>, tag: String, title: String = strin
 @Composable
 internal fun progressText(p: MakeProgress): String = when (p.stage) {
     MakeStage.COLLECTING -> stringResource(R.string.make_collecting, p.done, p.total)
+    MakeStage.DEEPENING -> stringResource(R.string.make_deepening, p.done, p.total)
     MakeStage.CHOOSING -> stringResource(R.string.make_choosing)
     MakeStage.WRITING -> stringResource(R.string.make_writing, p.done, p.total)
     MakeStage.SAVING -> stringResource(R.string.make_saving)

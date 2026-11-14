@@ -34,7 +34,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
 
-enum class MakeStage { COLLECTING, CHOOSING, WRITING, SAVING }
+enum class MakeStage { COLLECTING, DEEPENING, CHOOSING, WRITING, SAVING }
 
 /** Where a run stands: [done] of [total] steps of [stage]; [current] names what is being worked on. */
 data class MakeProgress(val stage: MakeStage, val done: Int, val total: Int, val current: String? = null)
@@ -131,8 +131,21 @@ class EditionMaker(
                 }
                 if (pending.isEmpty()) continue
             }
-            val batch = pending.take(MAX_RECORDS)
-            pending.subList(0, batch.size).clear()
+            val rawBatch = pending.take(MAX_RECORDS)
+            pending.subList(0, rawBatch.size).clear()
+            val deepenTotal = rawBatch.count { pages?.canDeepen(it.record.link) == true }
+            var deepened = 0
+            val batch = rawBatch.map { r ->
+                if (pages?.canDeepen(r.record.link) != true) r else {
+                    onProgress(MakeProgress(MakeStage.DEEPENING, deepened, deepenTotal, r.record.title))
+                    val evidence = try { pages.deepen(r.record.link) }
+                    catch (e: CancellationException) { throw e }
+                    catch (_: Exception) { emptyList() }
+                    deepened++
+                    onProgress(MakeProgress(MakeStage.DEEPENING, deepened, deepenTotal, r.record.title))
+                    r.copy(evidence = evidence, evidenceAttempted = true)
+                }
+            }
             batches++
             considered += batch.size
             onProgress(MakeProgress(MakeStage.CHOOSING, 0, 1))
@@ -215,6 +228,7 @@ class EditionMaker(
         val texts = LinkedHashMap<String, String?>()
         if (pages != null) {
             for (r in pick.refs) {
+                if (r.evidence.isNotEmpty()) continue
                 texts[r.record.link] = try {
                     pages.read(r.record.link)
                 } catch (e: CancellationException) {
